@@ -33,14 +33,14 @@ async function setStatus(
   return { ok: true }
 }
 
-export function approveReview(id: string) {
+export async function approveReview(id: string) {
   return setStatus(id, "approved")
 }
 
-export function rejectReview(id: string) {
+export async function rejectReview(id: string) {
   return setStatus(id, "rejected")
 }
 
-export function restoreReview(id: string) {
+export async function restoreReview(id: string) {
   return setStatus(id, "approved")
 }
