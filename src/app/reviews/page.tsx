@@ -5,7 +5,7 @@ import {
   TestimonialsColumn,
   type TestimonialItem,
 } from "@/components/ui/testimonials-columns"
-import { mockReviews, avgRating, countReviews } from "@/lib/mock-reviews"
+import { getApprovedReviews } from "@/lib/queries/reviews"
 
 export const metadata: Metadata = {
   title: "Reseñas de clientes — M90 Sports",
@@ -16,24 +16,24 @@ export const metadata: Metadata = {
 const M90_NAVY = "#011b53"
 const M90_CREAM_SOFT = "#f7ebc8"
 
-export default function PublicReviewsPage() {
-  const approved = mockReviews
-    .filter((r) => r.status === "approved")
-    .map<TestimonialItem>((r) => ({
-      id: r.id,
-      name: r.customerName,
-      city: r.customerCity,
-      country: r.customerCountry,
-      body: r.body,
-      rating: r.rating,
-      photoUrl: r.photoUrl,
-    }))
+export default async function PublicReviewsPage() {
+  const reviews = await getApprovedReviews()
+  const approved = reviews.map<TestimonialItem>((r) => ({
+    id: r.id,
+    name: r.customerName,
+    city: r.customerCity,
+    country: r.customerCountry,
+    body: r.body,
+    rating: r.rating,
+    photoUrl: r.photoUrl,
+  }))
 
-  const counts = countReviews()
-  const avg = avgRating()
+  const total = reviews.length
+  const sum = reviews.reduce((s, r) => s + r.rating, 0)
+  const avg = total > 0 ? sum / total : 0
+  const counts = { approved: total }
 
-  // Distribute roughly evenly
-  const total = approved.length
+  // Distribute roughly evenly across columns
   const perCol = Math.ceil(total / 3)
   const col1 = approved.slice(0, perCol)
   const col2 = approved.slice(perCol, perCol * 2)
