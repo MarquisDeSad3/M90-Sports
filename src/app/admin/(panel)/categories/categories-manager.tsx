@@ -6,13 +6,13 @@ import {
   Check,
   Eye,
   EyeOff,
-  FolderTree,
+  GripVertical,
   Loader2,
+  Pencil,
   Plus,
   Trash2,
   X,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -30,9 +30,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 import {
   createCategoryAction,
   deleteCategoryAction,
+  reorderCategoriesAction,
+  toggleCategoryVisibilityAction,
   updateCategoryAction,
   type ActionResult,
 } from "./actions"
@@ -44,16 +47,108 @@ interface ManagerProps {
   initial: AdminCategory[]
 }
 
+/**
+ * Local editable copy of the categories list. Order is what the user
+ * sees in the preview row; we sync it back to the server with
+ * reorderCategoriesAction after every drag-drop.
+ */
 export function CategoriesManager({ initial }: ManagerProps) {
+  const [items, setItems] = React.useState<AdminCategory[]>(initial)
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [savingOrder, setSavingOrder] = React.useState(false)
+  const [orderError, setOrderError] = React.useState<string | null>(null)
+
+  // Refresh local state when the server pushes a new initial (after
+  // create / edit / delete server actions revalidate the path).
+  React.useEffect(() => {
+    setItems(initial)
+  }, [initial])
+
+  async function persistOrder(next: AdminCategory[]) {
+    setSavingOrder(true)
+    setOrderError(null)
+    const ids = next.map((c) => c.id)
+    const result = await reorderCategoriesAction(ids)
+    setSavingOrder(false)
+    if (!result.ok) {
+      setOrderError(result.error)
+      // Revert to the server's last known order on failure so the UI
+      // doesn't lie about what's persisted.
+      setItems(initial)
+    }
+  }
+
+  function handleDrop(fromId: string, toId: string) {
+    if (fromId === toId) return
+    setItems((current) => {
+      const fromIdx = current.findIndex((c) => c.id === fromId)
+      const toIdx = current.findIndex((c) => c.id === toId)
+      if (fromIdx === -1 || toIdx === -1) return current
+      const next = [...current]
+      const [moved] = next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, moved!)
+      // Fire-and-forget — the result handler updates state if it fails.
+      void persistOrder(next)
+      return next
+    })
+  }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      {/* Storefront preview row */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            <span>Vista previa del storefront</span>
+            {savingOrder && (
+              <span className="inline-flex items-center gap-1.5 text-xs normal-case tracking-normal text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" /> Guardando orden…
+              </span>
+            )}
+            {orderError && !savingOrder && (
+              <span className="text-xs normal-case tracking-normal text-rose-600">
+                {orderError}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-xl bg-[#f7ebc8] p-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-[#011b53] bg-[#011b53] px-4 py-2 text-sm font-semibold text-[#efd9a3]">
+                Todo
+              </span>
+              {items
+                .filter((c) => c.visible && c.productCount > 0)
+                .map((c) => (
+                  <span
+                    key={c.id}
+                    className="rounded-full border border-[rgba(1,27,83,0.18)] bg-white/70 px-4 py-2 text-sm font-semibold text-[#011b53]"
+                  >
+                    {c.name}
+                  </span>
+                ))}
+            </div>
+            {items.filter((c) => c.visible && c.productCount > 0).length === 0 && (
+              <p className="text-xs text-[#011b53]/60">
+                Solo se mostrará "Todo" hasta que tengas categorías visibles
+                con al menos un producto.
+              </p>
+            )}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Las categorías ocultas o sin productos NO aparecen aquí ni en el
+            sitio público. Arrastra abajo para cambiar el orden.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Header + create */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {initial.length}{" "}
-          {initial.length === 1 ? "categoría" : "categorías"} en el catálogo
+          {items.length}{" "}
+          {items.length === 1 ? "categoría" : "categorías"} en total
         </div>
         <Button
           onClick={() => setCreateOpen((v) => !v)}
@@ -76,31 +171,33 @@ export function CategoriesManager({ initial }: ManagerProps) {
       {createOpen && (
         <CategoryForm
           mode="create"
-          parents={initial}
+          parents={items}
           onDone={() => setCreateOpen(false)}
         />
       )}
 
+      {/* Sortable list */}
       <Card>
         <CardContent className="p-0">
-          {initial.length === 0 ? (
+          {items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
-              <FolderTree className="size-8 text-muted-foreground/60" />
               <p className="text-sm text-muted-foreground">
-                Aún no hay categorías. Crea la primera para organizar el catálogo.
+                Aún no hay categorías. Crea la primera para organizar el
+                catálogo.
               </p>
             </div>
           ) : (
             <ul className="divide-y">
-              {initial.map((c) => (
-                <CategoryRow
+              {items.map((c) => (
+                <SortableRow
                   key={c.id}
                   category={c}
-                  parents={initial}
-                  isExpanded={editingId === c.id}
-                  onToggle={() =>
+                  parents={items}
+                  isEditing={editingId === c.id}
+                  onEdit={() =>
                     setEditingId((v) => (v === c.id ? null : c.id))
                   }
+                  onDrop={handleDrop}
                 />
               ))}
             </ul>
@@ -111,66 +208,149 @@ export function CategoriesManager({ initial }: ManagerProps) {
   )
 }
 
-function CategoryRow({
-  category,
-  parents,
-  isExpanded,
-  onToggle,
-}: {
+interface SortableRowProps {
   category: AdminCategory
   parents: AdminCategory[]
-  isExpanded: boolean
-  onToggle: () => void
-}) {
-  const parentName =
-    parents.find((p) => p.id === category.parentId)?.name ?? null
+  isEditing: boolean
+  onEdit: () => void
+  onDrop: (fromId: string, toId: string) => void
+}
+
+function SortableRow({
+  category,
+  parents,
+  isEditing,
+  onEdit,
+  onDrop,
+}: SortableRowProps) {
+  const [isDragOver, setDragOver] = React.useState(false)
 
   return (
-    <li className="px-4 py-3">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 text-left"
-      >
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-semibold">
-              {category.name}
-            </span>
-            {parentName && (
-              <span className="text-[11px] text-muted-foreground">
-                ↳ hija de {parentName}
-              </span>
-            )}
-            {!category.visible && (
-              <Badge variant="secondary" className="gap-1 text-[10px]">
-                <EyeOff className="size-3" /> oculta
-              </Badge>
-            )}
-          </div>
-          <span className="truncate text-xs text-muted-foreground">
-            /{category.slug} · {category.productCount} producto
-            {category.productCount === 1 ? "" : "s"} · posición{" "}
-            {category.position}
-          </span>
-        </div>
-        <Badge variant={category.visible ? "success" : "secondary"} className="gap-1">
-          {category.visible ? (
-            <Eye className="size-3" />
-          ) : (
-            <EyeOff className="size-3" />
-          )}
-          {category.visible ? "Visible" : "Oculta"}
-        </Badge>
-      </button>
+    <li
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/category-id", category.id)
+        e.dataTransfer.effectAllowed = "move"
+      }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "move"
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        const fromId = e.dataTransfer.getData("text/category-id")
+        setDragOver(false)
+        if (fromId) onDrop(fromId, category.id)
+      }}
+      className={cn(
+        "flex flex-col gap-2 px-3 py-2.5 transition-colors",
+        isDragOver && "bg-primary/5",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        {/* Drag handle */}
+        <button
+          type="button"
+          aria-label="Arrastrar para reordenar"
+          className="cursor-grab touch-none rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+        >
+          <GripVertical className="size-4" />
+        </button>
 
-      {isExpanded && (
-        <div className="mt-3 flex flex-col gap-3 rounded-lg border bg-muted/30 p-3">
-          <CategoryForm mode="edit" category={category} parents={parents} />
-          <DeleteButton categoryId={category.id} productCount={category.productCount} />
+        {/* Pill (visual matches the storefront) */}
+        <button
+          type="button"
+          onClick={onEdit}
+          className={cn(
+            "flex flex-1 items-center gap-2 truncate rounded-full border px-3 py-1.5 text-left text-sm font-semibold transition-all",
+            category.visible
+              ? "border-[rgba(1,27,83,0.18)] bg-[#f7ebc8] text-[#011b53] hover:border-[#011b53]/60"
+              : "border-dashed border-muted-foreground/30 bg-muted/40 text-muted-foreground line-through",
+          )}
+        >
+          <span className="truncate">{category.name}</span>
+          <span className="text-xs font-normal opacity-60">
+            {category.productCount}
+          </span>
+        </button>
+
+        <VisibilityToggle
+          id={category.id}
+          visible={category.visible}
+        />
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onEdit}
+          aria-label={isEditing ? "Cerrar editor" : "Editar"}
+          className="size-8 p-0"
+        >
+          {isEditing ? <X className="size-4" /> : <Pencil className="size-4" />}
+        </Button>
+      </div>
+
+      {isEditing && (
+        <div className="ml-9 flex flex-col gap-3 rounded-lg border bg-muted/30 p-3">
+          <CategoryForm
+            mode="edit"
+            category={category}
+            parents={parents}
+            compact
+          />
+          <DeleteButton
+            categoryId={category.id}
+            productCount={category.productCount}
+          />
         </div>
       )}
     </li>
+  )
+}
+
+function VisibilityToggle({
+  id,
+  visible,
+}: {
+  id: string
+  visible: boolean
+}) {
+  const [state, formAction, pending] = useActionState(
+    toggleCategoryVisibilityAction,
+    initialState,
+  )
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="visible" value={visible ? "false" : "true"} />
+      <Button
+        type="submit"
+        variant="ghost"
+        size="sm"
+        disabled={pending}
+        title={visible ? "Ocultar del storefront" : "Mostrar en el storefront"}
+        className={cn(
+          "size-8 p-0",
+          visible
+            ? "text-emerald-600 hover:text-emerald-700"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        {pending ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : visible ? (
+          <Eye className="size-4" />
+        ) : (
+          <EyeOff className="size-4" />
+        )}
+      </Button>
+      {!state.ok && state.error && (
+        <span className="ml-2 text-xs text-rose-600">{state.error}</span>
+      )}
+    </form>
   )
 }
 
@@ -178,11 +358,13 @@ function CategoryForm({
   mode,
   category,
   parents,
+  compact = false,
   onDone,
 }: {
   mode: "create" | "edit"
   category?: AdminCategory
   parents: AdminCategory[]
+  compact?: boolean
   onDone?: () => void
 }) {
   const [state, formAction, pending] = useActionState(
@@ -200,151 +382,144 @@ function CategoryForm({
     if (state.ok && mode === "create" && onDone) onDone()
   }, [state.ok, mode, onDone])
 
-  // For edits, only categories that aren't the row itself or its
-  // descendants are valid parents. We don't compute the full descendant
-  // set here (rare edit path) — just exclude self.
   const parentOptions = parents.filter((p) => p.id !== category?.id)
 
-  return (
-    <Card className={mode === "create" ? "" : "border-0 shadow-none"}>
-      {mode === "create" && (
-        <CardHeader>
-          <CardTitle className="text-base">Nueva categoría</CardTitle>
-        </CardHeader>
-      )}
-      <CardContent className={mode === "create" ? "" : "p-0"}>
-        <form action={formAction} className="grid gap-4 md:grid-cols-2">
-          {mode === "edit" && (
-            <input type="hidden" name="id" value={category!.id} />
+  const Wrapper = compact
+    ? React.Fragment
+    : ({ children }: { children: React.ReactNode }) => (
+        <Card>
+          {mode === "create" && (
+            <CardHeader>
+              <CardTitle className="text-base">Nueva categoría</CardTitle>
+            </CardHeader>
           )}
+          <CardContent>{children}</CardContent>
+        </Card>
+      )
 
-          <Field label="Nombre">
-            <Input
-              name="name"
-              defaultValue={category?.name ?? ""}
-              required
-              maxLength={80}
-              placeholder="NBA"
-            />
-          </Field>
+  return (
+    <Wrapper>
+      <form action={formAction} className="grid gap-3 md:grid-cols-2">
+        {mode === "edit" && (
+          <input type="hidden" name="id" value={category!.id} />
+        )}
+        <input
+          type="hidden"
+          name="position"
+          value={category?.position ?? 0}
+        />
 
-          <Field
-            label="Slug"
-            hint="Lo que aparece en la URL. Si lo dejas vacío se genera del nombre."
-          >
-            <Input
-              name="slug"
-              defaultValue={category?.slug ?? ""}
-              maxLength={80}
-              placeholder="nba"
-            />
-          </Field>
+        <Field label="Nombre">
+          <Input
+            name="name"
+            defaultValue={category?.name ?? ""}
+            required
+            maxLength={80}
+            placeholder="NBA"
+          />
+        </Field>
 
-          <Field label="Categoría padre" className="md:col-span-2">
-            <Select value={parentId} onValueChange={setParentId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sin padre (raíz)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Sin padre (raíz)</SelectItem>
-                {parentOptions.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input
-              type="hidden"
-              name="parentId"
-              value={parentId === "__none__" ? "" : parentId}
-            />
-          </Field>
+        <Field
+          label="Slug"
+          hint="Si lo dejas vacío se genera del nombre"
+        >
+          <Input
+            name="slug"
+            defaultValue={category?.slug ?? ""}
+            maxLength={80}
+            placeholder="nba"
+          />
+        </Field>
 
-          <Field
-            label="Descripción"
-            hint="Texto corto opcional para la página de la categoría"
-            className="md:col-span-2"
-          >
-            <Input
-              name="description"
-              defaultValue={category?.description ?? ""}
-              maxLength={500}
-              placeholder="Camisetas oficiales y retro de fútbol"
-            />
-          </Field>
+        <Field label="Categoría padre" className="md:col-span-2">
+          <Select value={parentId} onValueChange={setParentId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Sin padre (raíz)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sin padre (raíz)</SelectItem>
+              {parentOptions.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <input
+            type="hidden"
+            name="parentId"
+            value={parentId === "__none__" ? "" : parentId}
+          />
+        </Field>
 
-          <Field label="Imagen (URL)">
-            <Input
-              name="imageUrl"
-              defaultValue={category?.imageUrl ?? ""}
-              type="url"
-              maxLength={500}
-              placeholder="https://..."
-            />
-          </Field>
+        <Field label="Descripción" className="md:col-span-2">
+          <Input
+            name="description"
+            defaultValue={category?.description ?? ""}
+            maxLength={500}
+            placeholder="Camisetas oficiales y retro de fútbol"
+          />
+        </Field>
 
-          <Field
-            label="Posición"
-            hint="Más bajo = aparece primero en el storefront"
-          >
-            <Input
-              name="position"
-              type="number"
-              min={0}
-              max={9999}
-              defaultValue={category?.position ?? 0}
-            />
-          </Field>
+        <Field label="Imagen (URL)" className="md:col-span-2">
+          <Input
+            name="imageUrl"
+            defaultValue={category?.imageUrl ?? ""}
+            type="url"
+            maxLength={500}
+            placeholder="https://..."
+          />
+        </Field>
 
-          <Field label="SEO Title" className="md:col-span-2">
-            <Input
-              name="seoTitle"
-              defaultValue={category?.seoTitle ?? ""}
-              maxLength={120}
-              placeholder="(opcional, sobreescribe el título por defecto)"
-            />
-          </Field>
-
-          <Field label="SEO Description" className="md:col-span-2">
-            <Input
-              name="seoDescription"
-              defaultValue={category?.seoDescription ?? ""}
-              maxLength={300}
-              placeholder="(opcional)"
-            />
-          </Field>
-
-          <div className="flex items-center gap-3 md:col-span-2">
-            <Switch
-              name="visible"
-              checked={visible}
-              onCheckedChange={setVisible}
-            />
-            <Label className="text-sm">
-              Visible en el storefront
-            </Label>
+        <details className="md:col-span-2">
+          <summary className="cursor-pointer text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground">
+            SEO (opcional)
+          </summary>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <Field label="SEO Title">
+              <Input
+                name="seoTitle"
+                defaultValue={category?.seoTitle ?? ""}
+                maxLength={120}
+              />
+            </Field>
+            <Field label="SEO Description">
+              <Input
+                name="seoDescription"
+                defaultValue={category?.seoDescription ?? ""}
+                maxLength={300}
+              />
+            </Field>
           </div>
+        </details>
 
-          <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={pending} className="gap-2">
-              {pending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Check className="size-4" />
-              )}
-              {mode === "create" ? "Crear categoría" : "Guardar cambios"}
-            </Button>
-            {state.ok && mode === "edit" && (
-              <span className="text-xs text-emerald-600">Guardado</span>
+        <div className="flex items-center gap-3 md:col-span-2">
+          <Switch
+            name="visible"
+            checked={visible}
+            onCheckedChange={setVisible}
+          />
+          <Label className="text-sm">Visible en el storefront</Label>
+        </div>
+
+        <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={pending} size="sm" className="gap-2">
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
             )}
-            {!state.ok && state.error && (
-              <span className="text-sm text-rose-600">{state.error}</span>
-            )}
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+            {mode === "create" ? "Crear" : "Guardar"}
+          </Button>
+          {state.ok && mode === "edit" && (
+            <span className="text-xs text-emerald-600">Guardado</span>
+          )}
+          {!state.ok && state.error && (
+            <span className="text-sm text-rose-600">{state.error}</span>
+          )}
+        </div>
+      </form>
+    </Wrapper>
   )
 }
 
@@ -374,7 +549,7 @@ function DeleteButton({
       <Button
         type="submit"
         disabled={pending}
-        variant={confirming ? "destructive" : "outline"}
+        variant={confirming ? "destructive" : "ghost"}
         size="sm"
         className="gap-1.5"
       >
@@ -387,7 +562,7 @@ function DeleteButton({
           ? productCount > 0
             ? `Confirmar (afecta ${productCount} producto${productCount === 1 ? "" : "s"})`
             : "Confirmar eliminación"
-          : "Eliminar categoría"}
+          : "Eliminar"}
       </Button>
       {!state.ok && state.error && (
         <span className="ml-2 text-xs text-rose-600">{state.error}</span>

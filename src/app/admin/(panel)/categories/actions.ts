@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq, ne, and } from "drizzle-orm"
+import { eq, ne, and, sql } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { z } from "zod"
 import { db } from "@/lib/db"
@@ -179,6 +179,90 @@ export async function updateCategoryAction(
     const msg = err instanceof Error ? err.message : "unknown"
     console.error("[categories] update failed:", msg)
     return { ok: false, error: "No se pudo actualizar la categoría." }
+  }
+
+  revalidatePath("/admin/categories")
+  revalidatePath("/")
+  return { ok: true }
+}
+
+/**
+ * Update only the visibility flag — quicker round-trip than a full edit
+ * for the eye/eye-off toggle in the list. Manager+ can flip visibility.
+ */
+export async function toggleCategoryVisibilityAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  try {
+    await requireAdminRole("manager")
+  } catch {
+    return { ok: false, error: "No autorizado." }
+  }
+
+  const id = String(formData.get("id") ?? "")
+  const visible = formData.get("visible") === "true"
+  if (!id) return { ok: false, error: "ID inválido." }
+
+  try {
+    await db
+      .update(categories)
+      .set({ visible, updatedAt: new Date() })
+      .where(eq(categories.id, id))
+  } catch {
+    return { ok: false, error: "No se pudo actualizar." }
+  }
+
+  revalidatePath("/admin/categories")
+  revalidatePath("/")
+  return { ok: true }
+}
+
+/**
+ * Bulk-update positions in a single round trip. The client sends the
+ * full ordered list of IDs; we map each to its index. We use a single
+ * SQL CASE statement instead of N separate UPDATEs so dragging through
+ * a 20-row list stays a single DB call.
+ */
+export async function reorderCategoriesAction(
+  orderedIds: string[],
+): Promise<ActionResult> {
+  try {
+    await requireAdminRole("manager")
+  } catch {
+    return { ok: false, error: "No autorizado." }
+  }
+
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { ok: false, error: "Lista vacía." }
+  }
+
+  // Validate each id is a non-empty string — rejects malformed payloads
+  // before they hit the DB.
+  if (orderedIds.some((id) => typeof id !== "string" || id.length === 0)) {
+    return { ok: false, error: "IDs inválidos." }
+  }
+
+  try {
+    // Build "WHEN id = 'x' THEN N" pairs. Drizzle's sql template handles
+    // parameterization for each value so we don't risk SQL injection.
+    const cases = orderedIds.map(
+      (id, idx) => sql`WHEN ${id} THEN ${idx * 10}`,
+    )
+    const idList = sql.join(
+      orderedIds.map((id) => sql`${id}`),
+      sql`, `,
+    )
+    await db.execute(sql`
+      UPDATE categories
+      SET position = CASE id ${sql.join(cases, sql` `)} END,
+          updated_at = NOW()
+      WHERE id IN (${idList})
+    `)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "unknown"
+    console.error("[categories] reorder failed:", msg)
+    return { ok: false, error: "No se pudo guardar el orden." }
   }
 
   revalidatePath("/admin/categories")
