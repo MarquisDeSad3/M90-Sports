@@ -44,10 +44,10 @@ export function PageStub({
         </div>
 
         <div className="relative flex max-w-md flex-col gap-1.5">
-          <h3 className="text-base font-semibold">En construcción</h3>
+          <h3 className="text-base font-semibold">Pendiente de construir</h3>
           <p className="text-sm text-muted-foreground">
-            Esta sección se va a conectar a la base de datos cuando el VPS esté
-            activo. La estructura ya está lista en el esquema.
+            La tabla ya existe en la base de datos, pero la interfaz aún no.
+            Avísanos si la necesitas y la priorizamos.
           </p>
         </div>
 

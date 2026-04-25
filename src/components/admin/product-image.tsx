@@ -37,6 +37,11 @@ interface ProductImageProps {
   number?: string
   className?: string
   size?: "sm" | "md" | "lg"
+  /**
+   * If provided, renders the real product photo. Falls back to the
+   * team-colored initials if absent or if the image fails to load.
+   */
+  imageUrl?: string | null
 }
 
 export function ProductImage({
@@ -44,6 +49,7 @@ export function ProductImage({
   number,
   className,
   size = "md",
+  imageUrl,
 }: ProductImageProps) {
   const colors = getColors(team)
   const dim = {
@@ -51,6 +57,26 @@ export function ProductImage({
     md: { container: "size-12", text: "text-[10px]", num: "text-base" },
     lg: { container: "size-16", text: "text-xs", num: "text-xl" },
   }[size]
+
+  if (imageUrl) {
+    return (
+      <div
+        className={cn(
+          "relative shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-inset ring-black/5",
+          dim.container,
+          className,
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={team || "Producto"}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    )
+  }
 
   return (
     <div

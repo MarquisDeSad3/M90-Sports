@@ -372,6 +372,7 @@ export function ProductsListClient({ products, counts }: ProductsListClientProps
                           team={product.team}
                           number={product.number}
                           size="md"
+                          imageUrl={product.primaryImage}
                         />
                         <div className="flex min-w-0 flex-col gap-0.5">
                           <div className="flex items-center gap-1.5">
@@ -494,6 +495,7 @@ export function ProductsListClient({ products, counts }: ProductsListClientProps
                       team={product.team}
                       number={product.number}
                       size="lg"
+                      imageUrl={product.primaryImage}
                     />
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex items-start gap-1.5">
