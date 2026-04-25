@@ -15,14 +15,14 @@ export default function AdminRootLayout({
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="dark"
-      enableSystem
+      defaultTheme="light"
+      enableSystem={false}
       storageKey="m90-admin-theme"
     >
       <div className="admin-scope min-h-svh bg-background text-foreground antialiased">
         {children}
       </div>
-      <Toaster richColors position="top-right" theme="dark" />
+      <Toaster richColors position="top-right" />
     </ThemeProvider>
   )
 }

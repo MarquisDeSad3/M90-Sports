@@ -1,6 +1,8 @@
-import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
+import type { Metadata, Viewport } from "next"
+import localFont from "next/font/local"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
+import "./globals.css"
 
 const familiarPro = localFont({
   src: "../../public/familiar-pro-bold.otf",
@@ -8,7 +10,7 @@ const familiarPro = localFont({
   weight: "700",
   style: "normal",
   variable: "--font-familiar-pro",
-});
+})
 
 export const metadata: Metadata = {
   title: "M90 — Tienda de artículos deportivos en Cuba",
@@ -23,30 +25,26 @@ export const metadata: Metadata = {
       "La tienda deportiva de Cuba. Camisetas, equipación y accesorios — pedidos por WhatsApp.",
     type: "website",
   },
-};
+}
 
 export const viewport: Viewport = {
-  themeColor: "#011b53",
+  themeColor: "#FAF6EC",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={familiarPro.variable} suppressHydrationWarning>
-      <body
-        suppressHydrationWarning
-        style={{
-          fontFamily:
-            "var(--font-familiar-pro), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-        }}
-      >
-        {children}
-      </body>
+    <html
+      lang="es"
+      className={`${familiarPro.variable} ${GeistSans.variable} ${GeistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body suppressHydrationWarning>{children}</body>
     </html>
-  );
+  )
 }

@@ -16,11 +16,16 @@ export interface StatCardProps {
 }
 
 const accentStyles: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  default: "from-primary/10 to-transparent text-primary",
-  success: "from-emerald-500/15 to-transparent text-emerald-500",
-  warning: "from-amber-500/15 to-transparent text-amber-500",
-  destructive: "from-rose-500/15 to-transparent text-rose-500",
-  info: "from-sky-500/15 to-transparent text-sky-500",
+  default:
+    "bg-primary/8 text-primary ring-primary/10",
+  success:
+    "bg-emerald-500/10 text-emerald-700 ring-emerald-500/15 dark:text-emerald-300",
+  warning:
+    "bg-amber-500/12 text-amber-700 ring-amber-500/20 dark:text-amber-300",
+  destructive:
+    "bg-rose-500/10 text-rose-700 ring-rose-500/15 dark:text-rose-300",
+  info:
+    "bg-sky-500/10 text-sky-700 ring-sky-500/15 dark:text-sky-300",
 }
 
 export function StatCard({
@@ -31,41 +36,35 @@ export function StatCard({
   accent = "default",
 }: StatCardProps) {
   return (
-    <Card className="group relative gap-3 overflow-hidden p-5 transition-shadow hover:shadow-md">
-      <div
-        className={cn(
-          "pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-gradient-to-br opacity-60 blur-2xl transition-opacity group-hover:opacity-100",
-          accentStyles[accent]
-        )}
-      />
-      <CardContent className="relative flex flex-col gap-2 p-0">
-        <div className="flex items-start justify-between">
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+    <Card className="group gap-2.5 rounded-xl border-border/70 bg-card p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover">
+      <CardContent className="flex flex-col gap-2.5 p-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
             {label}
           </div>
           {Icon && (
             <div
               className={cn(
-                "grid size-8 place-items-center rounded-lg bg-gradient-to-br ring-1 ring-inset ring-border/60",
+                "grid size-9 shrink-0 place-items-center rounded-lg ring-1 ring-inset transition-transform duration-200 group-hover:scale-105",
                 accentStyles[accent]
               )}
             >
-              <Icon className="size-4" />
+              <Icon className="size-[17px]" strokeWidth={2} />
             </div>
           )}
         </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold tabular-nums tracking-tight md:text-3xl">
+        <div className="flex items-end gap-2">
+          <span className="font-display text-3xl tracking-tight tabular-nums leading-none text-foreground md:text-[32px]">
             {value}
           </span>
           {delta && (
             <span
               className={cn(
-                "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
+                "mb-0.5 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
                 delta.direction === "up" &&
-                  "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                  "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
                 delta.direction === "down" &&
-                  "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+                  "bg-rose-500/12 text-rose-700 dark:text-rose-300",
                 delta.direction === "flat" &&
                   "bg-muted text-muted-foreground"
               )}

@@ -21,7 +21,6 @@ export function AdminSidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = React.useState(false)
 
-  // Persist collapsed state
   React.useEffect(() => {
     const saved = localStorage.getItem("admin-sidebar-collapsed")
     if (saved === "true") setCollapsed(true)
@@ -40,13 +39,13 @@ export function AdminSidebar() {
       <aside
         className={cn(
           "sticky top-0 z-30 hidden h-svh shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out lg:flex lg:flex-col",
-          collapsed ? "w-[72px]" : "w-[240px]"
+          collapsed ? "w-[76px]" : "w-[256px]"
         )}
       >
         {/* Header */}
         <div
           className={cn(
-            "flex h-14 items-center border-b border-sidebar-border px-4",
+            "flex h-16 items-center border-b border-sidebar-border/60 px-4",
             collapsed && "justify-center px-2"
           )}
         >
@@ -62,14 +61,14 @@ export function AdminSidebar() {
         <ScrollArea className="flex-1">
           <nav
             className={cn(
-              "flex flex-col gap-6 py-4",
+              "flex flex-col gap-5 py-5",
               collapsed ? "px-2" : "px-3"
             )}
           >
             {adminNav.map((group) => (
-              <div key={group.label} className="flex flex-col gap-1">
+              <div key={group.label} className="flex flex-col gap-0.5">
                 {!collapsed && (
-                  <div className="mb-1 px-2 text-[10px] font-medium uppercase tracking-[0.14em] text-sidebar-foreground/50">
+                  <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/45">
                     {group.label}
                   </div>
                 )}
@@ -83,24 +82,21 @@ export function AdminSidebar() {
                     <Link
                       href={item.href}
                       className={cn(
-                        "group relative flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] font-medium transition-all duration-150",
                         active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                          ? "bg-card text-foreground shadow-card"
+                          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/55 hover:text-sidebar-foreground",
                         collapsed && "justify-center px-2"
                       )}
                     >
-                      {/* Active indicator bar */}
-                      {active && !collapsed && (
-                        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
-                      )}
                       <Icon
                         className={cn(
-                          "size-[18px] shrink-0 transition-colors",
+                          "size-[17px] shrink-0 transition-colors",
                           active
-                            ? "text-foreground"
-                            : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"
+                            ? "text-primary"
+                            : "text-sidebar-foreground/55 group-hover:text-sidebar-foreground"
                         )}
+                        strokeWidth={active ? 2.2 : 1.8}
                       />
                       {!collapsed && (
                         <>
@@ -108,7 +104,10 @@ export function AdminSidebar() {
                           {item.badge !== undefined && (
                             <Badge
                               variant={active ? "default" : "secondary"}
-                              className="h-5 min-w-5 justify-center px-1.5 text-[10px]"
+                              className={cn(
+                                "h-[18px] min-w-[18px] justify-center px-1.5 text-[10px] font-semibold tabular-nums",
+                                !active && "bg-sidebar-accent/80"
+                              )}
                             >
                               {item.badge}
                             </Badge>
@@ -116,7 +115,7 @@ export function AdminSidebar() {
                         </>
                       )}
                       {collapsed && item.badge !== undefined && (
-                        <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />
+                        <span className="absolute right-1 top-1 size-1.5 rounded-full bg-destructive" />
                       )}
                     </Link>
                   )
@@ -127,23 +126,25 @@ export function AdminSidebar() {
                         <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
                         <TooltipContent side="right" className="font-medium">
                           {item.title}
-                          {item.badge !== undefined && ` (${item.badge})`}
+                          {item.badge !== undefined && ` · ${item.badge}`}
                         </TooltipContent>
                       </Tooltip>
                     )
                   }
 
-                  return <React.Fragment key={item.href}>{linkContent}</React.Fragment>
+                  return (
+                    <React.Fragment key={item.href}>{linkContent}</React.Fragment>
+                  )
                 })}
               </div>
             ))}
           </nav>
         </ScrollArea>
 
-        {/* Collapse toggle */}
+        {/* Footer / Collapse */}
         <div
           className={cn(
-            "border-t border-sidebar-border p-2",
+            "border-t border-sidebar-border/60 p-2",
             collapsed && "flex justify-center"
           )}
         >
@@ -152,7 +153,7 @@ export function AdminSidebar() {
             size="sm"
             onClick={toggle}
             className={cn(
-              "h-9 w-full justify-start gap-2 text-xs text-sidebar-foreground/70 hover:bg-sidebar-accent/60",
+              "h-9 w-full justify-start gap-2 rounded-lg text-xs font-medium text-sidebar-foreground/65 hover:bg-sidebar-accent/55 hover:text-sidebar-foreground",
               collapsed && "size-9 w-9 justify-center px-0"
             )}
             aria-label={collapsed ? "Expandir sidebar" : "Colapsar sidebar"}
