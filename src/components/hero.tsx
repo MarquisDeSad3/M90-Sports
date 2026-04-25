@@ -5,6 +5,68 @@ import { useRef } from "react";
 import { ArrowDown } from "lucide-react";
 import { asset } from "@/lib/utils";
 
+/** Smoothstep cubic ease-out — slow finish, snappy start. */
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+/**
+ * Tween window.scrollY from current → target over the given duration,
+ * then call `onDone`. Returns a cancel function (currently unused but
+ * kept so we can wire it to a click-to-cancel later if needed).
+ */
+function tweenScrollTo(
+  target: number,
+  duration: number,
+  onDone?: () => void,
+): () => void {
+  const start = window.scrollY;
+  const t0 = performance.now();
+  let cancelled = false;
+  function step(now: number) {
+    if (cancelled) return;
+    const t = Math.min(1, (now - t0) / duration);
+    const eased = easeOutCubic(t);
+    window.scrollTo(0, start + (target - start) * eased);
+    if (t < 1) requestAnimationFrame(step);
+    else onDone?.();
+  }
+  requestAnimationFrame(step);
+  return () => {
+    cancelled = true;
+  };
+}
+
+/**
+ * Two-phase scroll for the EXPLORAR button: first plays the Hero's
+ * scroll-driven fan animation (so the visitor actually sees the side
+ * photos splay), then snaps to the catalog. Honors prefers-reduced-motion.
+ */
+function exploreScroll(e: React.MouseEvent<HTMLAnchorElement>) {
+  e.preventDefault();
+  const hero = document.getElementById("top");
+  const target = document.getElementById("tienda");
+  if (!target) return;
+
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  if (reduceMotion || !hero) {
+    target.scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+
+  // Scroll to ~70% of the Hero — the fan animation peaks at progress
+  // 0.65, so past that is dead space. Phase 1 lets the user actually
+  // see the photos splay; phase 2 then snaps to the catalog.
+  const heroPlaythrough = hero.offsetTop + hero.offsetHeight * 0.7;
+  const targetTop = target.offsetTop - 60;
+
+  tweenScrollTo(heroPlaythrough, 1100, () => {
+    tweenScrollTo(targetTop, 450);
+  });
+}
+
 const PHOTOS = {
   left: {
     src: asset("/hero/hero-left.jpg"),
@@ -254,7 +316,8 @@ export function Hero() {
               className="flex items-center justify-center"
             >
               <a
-                href="#catalogo"
+                href="#tienda"
+                onClick={exploreScroll}
                 className="group inline-flex items-center gap-2 font-display text-xl italic text-[color:var(--color-navy)] md:gap-3 md:text-3xl"
               >
                 EXPLORAR
