@@ -19,14 +19,11 @@ export default async function StaffPage() {
   return (
     <div className="flex flex-col gap-5 p-4 md:gap-6 md:p-6">
       <div className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">Solo el dueño accede aquí</p>
         <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
-          Equipo del panel
+          Equipo
         </h2>
         <p className="text-sm text-muted-foreground">
-          Crea cuentas para tu equipo, asigna su rol y revoca acceso cuando
-          necesites. Cambiar el rol o eliminar a alguien cierra sus sesiones
-          al instante.
+          Quién entra al panel y qué puede hacer.
         </p>
       </div>
 

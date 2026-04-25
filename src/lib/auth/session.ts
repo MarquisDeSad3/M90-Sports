@@ -54,6 +54,7 @@ export interface AuthenticatedAdmin {
     id: string
     email: string
     name: string
+    photoUrl: string | null
     role: "owner" | "manager" | "staff" | "viewer"
     twoFactorEnabled: boolean
   }
@@ -72,6 +73,7 @@ export async function validateSession(token: string | undefined | null): Promise
         id: adminUsers.id,
         email: adminUsers.email,
         name: adminUsers.name,
+        photoUrl: adminUsers.photoUrl,
         role: adminUsers.role,
         twoFactorEnabled: adminUsers.twoFactorEnabled,
         deletedAt: adminUsers.deletedAt,
@@ -103,6 +105,7 @@ export async function validateSession(token: string | undefined | null): Promise
       id: row.admin.id,
       email: row.admin.email,
       name: row.admin.name,
+      photoUrl: row.admin.photoUrl,
       role: row.admin.role as "owner" | "manager" | "staff" | "viewer",
       twoFactorEnabled: row.admin.twoFactorEnabled,
     },

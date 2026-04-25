@@ -170,6 +170,7 @@ export const adminUsers = pgTable(
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
     name: text("name").notNull(),
+    photoUrl: text("photo_url"),
     role: adminRoleEnum("role").notNull().default("staff"),
     twoFactorSecret: text("two_factor_secret"),
     twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
