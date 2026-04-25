@@ -37,8 +37,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={familiarPro.variable}>
+    <html lang="es" className={familiarPro.variable} suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         style={{
           fontFamily:
             "var(--font-familiar-pro), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
