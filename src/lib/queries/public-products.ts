@@ -31,6 +31,7 @@ export interface PublicProduct {
   basePrice: number
   compareAtPrice: number | null
   primaryImageUrl: string | null
+  featured: boolean
   isPreorder: boolean
   preorderReleaseDate: string | null
   variants: PublicVariant[]
@@ -106,6 +107,7 @@ export async function getPublicProducts(): Promise<PublicProduct[]> {
       basePrice: Number(r.basePrice),
       compareAtPrice: r.compareAtPrice ? Number(r.compareAtPrice) : null,
       primaryImageUrl: imagesMap.get(r.id) ?? null,
+      featured: r.featured,
       isPreorder: r.isPreorder,
       preorderReleaseDate: r.preorderReleaseDate ?? null,
       variants: vs.map((v) => ({
@@ -166,6 +168,7 @@ export async function getPublicProduct(
     basePrice: Number(product.basePrice),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
     primaryImageUrl: primaryImg[0]?.url ?? null,
+    featured: product.featured,
     isPreorder: product.isPreorder,
     preorderReleaseDate: product.preorderReleaseDate ?? null,
     variants: productVariants.map((v) => ({
