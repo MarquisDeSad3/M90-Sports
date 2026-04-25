@@ -4,6 +4,9 @@ import { StorefrontHeader } from "@/components/public/storefront-header"
 import { ProductTile } from "@/components/public/product-tile"
 import { getPublicProducts } from "@/lib/queries/public-products"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: "Tienda · M90 Sports",
   description:
