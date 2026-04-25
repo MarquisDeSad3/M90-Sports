@@ -158,7 +158,7 @@ export function ReviewsListClient({ initialReviews }: ReviewsListClientProps) {
           Reseñas
         </h2>
         <p className="text-sm text-muted-foreground">
-          Modera reseñas de clientes. Aprueba, rechaza o destaca en home. <strong className="text-foreground">No se pueden editar</strong> — sería deshonesto.
+          Aprueba, rechaza o destaca reseñas de clientes.
         </p>
       </div>
 
