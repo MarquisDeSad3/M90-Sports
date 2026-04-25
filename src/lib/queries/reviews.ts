@@ -31,47 +31,55 @@ export async function getReviews(
 
   const where = conditions.length > 0 ? and(...conditions) : undefined
 
-  const rows = await db
-    .select({
-      id: reviews.id,
-      productId: reviews.productId,
-      customerName: reviews.customerName,
-      rating: reviews.rating,
-      title: reviews.title,
-      body: reviews.body,
-      photoUrl: reviews.photoUrl,
-      status: reviews.status,
-      createdAt: reviews.createdAt,
-      adminResponse: reviews.adminResponse,
-      adminResponseAt: reviews.adminResponseAt,
-      productName: products.name,
-      productTeam: products.team,
-    })
-    .from(reviews)
-    .leftJoin(products, eq(products.id, reviews.productId))
-    .where(where)
-    .orderBy(desc(reviews.createdAt))
-    .limit(filters.limit ?? 200)
-    .offset(filters.offset ?? 0)
+  try {
+    const rows = await db
+      .select({
+        id: reviews.id,
+        productId: reviews.productId,
+        customerName: reviews.customerName,
+        rating: reviews.rating,
+        title: reviews.title,
+        body: reviews.body,
+        photoUrl: reviews.photoUrl,
+        status: reviews.status,
+        createdAt: reviews.createdAt,
+        adminResponse: reviews.adminResponse,
+        adminResponseAt: reviews.adminResponseAt,
+        productName: products.name,
+        productTeam: products.team,
+      })
+      .from(reviews)
+      .leftJoin(products, eq(products.id, reviews.productId))
+      .where(where)
+      .orderBy(desc(reviews.createdAt))
+      .limit(filters.limit ?? 200)
+      .offset(filters.offset ?? 0)
 
-  return rows.map((r): MockReview => ({
-    id: r.id,
-    productId: r.productId,
-    productName: r.productName ?? "—",
-    team: r.productTeam ?? "",
-    customerName: r.customerName,
-    customerCity: undefined,
-    customerCountry: "CU",
-    rating: r.rating,
-    body: r.body,
-    hasPhoto: !!r.photoUrl,
-    photoUrl: r.photoUrl ?? undefined,
-    status: r.status as ReviewStatus,
-    featured: false,
-    createdAt: r.createdAt.toISOString(),
-    adminResponse: r.adminResponse ?? undefined,
-    adminResponseAt: r.adminResponseAt?.toISOString(),
-  }))
+    return rows.map((r): MockReview => ({
+      id: r.id,
+      productId: r.productId,
+      productName: r.productName ?? "—",
+      team: r.productTeam ?? "",
+      customerName: r.customerName,
+      customerCity: undefined,
+      customerCountry: "CU",
+      rating: r.rating,
+      body: r.body,
+      hasPhoto: !!r.photoUrl,
+      photoUrl: r.photoUrl ?? undefined,
+      status: r.status as ReviewStatus,
+      featured: false,
+      createdAt: r.createdAt.toISOString(),
+      adminResponse: r.adminResponse ?? undefined,
+      adminResponseAt: r.adminResponseAt?.toISOString(),
+    }))
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[reviews] DB unavailable in dev:", err)
+      return []
+    }
+    throw err
+  }
 }
 
 export interface ReviewCounts {
