@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq, ne, and, sql } from "drizzle-orm"
+import { eq, ne, and } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { z } from "zod"
 import { db } from "@/lib/db"
@@ -244,21 +244,19 @@ export async function reorderCategoriesAction(
   }
 
   try {
-    // Build "WHEN id = 'x' THEN N" pairs. Drizzle's sql template handles
-    // parameterization for each value so we don't risk SQL injection.
-    const cases = orderedIds.map(
-      (id, idx) => sql`WHEN ${id} THEN ${idx * 10}`,
-    )
-    const idList = sql.join(
-      orderedIds.map((id) => sql`${id}`),
-      sql`, `,
-    )
-    await db.execute(sql`
-      UPDATE categories
-      SET position = CASE id ${sql.join(cases, sql` `)} END,
-          updated_at = NOW()
-      WHERE id IN (${idList})
-    `)
+    // One UPDATE per row inside a single transaction. Less elegant
+    // than a CASE/WHEN, but Drizzle + postgres-js was choking on the
+    // mixed-type parameter list and the CASE branch type inference.
+    // 20 row-updates inside a tx is still <30ms, fine for this surface.
+    const now = new Date()
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < orderedIds.length; i++) {
+        await tx
+          .update(categories)
+          .set({ position: i * 10, updatedAt: now })
+          .where(eq(categories.id, orderedIds[i]!))
+      }
+    })
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown"
     console.error("[categories] reorder failed:", msg)
