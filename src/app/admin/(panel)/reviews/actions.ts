@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { reviews } from "@/lib/db/schema"
-import { requireAdmin } from "@/lib/auth"
+import { requireAdminRole } from "@/lib/auth"
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
 
@@ -12,7 +12,7 @@ async function setStatus(
   id: string,
   status: "approved" | "rejected" | "pending"
 ): Promise<ActionResult> {
-  await requireAdmin()
+  await requireAdminRole("staff")
   try {
     await db
       .update(reviews)

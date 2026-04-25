@@ -103,19 +103,25 @@ export async function POST(request: Request) {
   const ua = request.headers.get("user-agent")
 
   // 1. Cheap client-shape check — refuses obvious non-browser tooling.
+  // We reply with the same generic 400 we use for every other anti-bot
+  // signal so an attacker can't distinguish "blocked because of UA" vs
+  // "blocked because of honeypot" from the response alone.
   if (!looksLikeBrowser(request)) {
-    logSecurityEvent({ ip, reason: "non-browser-ua", status: 403, ua })
-    return fail(403, "Cliente no permitido.", "bad_client")
+    logSecurityEvent({ ip, reason: "non-browser-ua", status: 400, ua })
+    return fail(400, "No pudimos validar tu solicitud.")
   }
 
   // 2. Body-size cap. Reject before parsing if Content-Length is suspicious.
   const declaredLength = Number(request.headers.get("content-length") ?? 0)
   if (declaredLength > MAX_BODY_BYTES) {
     logSecurityEvent({ ip, reason: "body-too-large", status: 413, ua })
-    return fail(413, "Pedido demasiado grande.", "too_large")
+    return fail(413, "Pedido demasiado grande.")
   }
 
-  // 3. Multi-tier rate limit + ban check.
+  // 3. Multi-tier rate limit + ban check. We DO surface the 429 with a
+  // Retry-After header here because that's a legitimate signal a real
+  // client (a frantic customer) needs in order to back off — there's
+  // no information advantage for an attacker, just a "wait" hint.
   const limit = await checkOrderLimits(ip)
   if (!limit.ok) {
     logSecurityEvent({ ip, reason: `rl:${limit.reason}`, status: 429, ua })
@@ -125,45 +131,48 @@ export async function POST(request: Request) {
       limit.reason === "banned"
         ? "Tu acceso fue suspendido por actividad sospechosa."
         : "Demasiadas solicitudes. Espera un momento e intenta de nuevo.",
-      limit.reason,
     )
     if (retry) res.headers.set("Retry-After", String(retry))
     return res
   }
 
   // 4. Parse body. We already capped Content-Length; this is the safety net.
+  // From here on, every reject path returns the SAME generic message so
+  // the response can't be used to fingerprint which check tripped.
   const text = await request.text()
   if (text.length > MAX_BODY_BYTES) {
     logSecurityEvent({ ip, reason: "body-too-large-actual", status: 413, ua })
-    return fail(413, "Pedido demasiado grande.", "too_large")
+    return fail(413, "Pedido demasiado grande.")
   }
   let raw: unknown
   try {
     raw = JSON.parse(text)
   } catch {
-    return fail(400, "JSON inválido.", "bad_json")
+    logSecurityEvent({ ip, reason: "bad-json", status: 400, ua })
+    return fail(400, "No pudimos validar tu solicitud.")
   }
 
   // 5. Schema validation — strict mode rejects unknown fields.
   const parsed = orderInputSchema.safeParse(raw)
   if (!parsed.success) {
     logSecurityEvent({ ip, reason: "schema", status: 400, ua })
-    return fail(400, "Datos del pedido inválidos.", "validation")
+    return fail(400, "No pudimos validar tu solicitud.")
   }
   const body: OrderInput = parsed.data
 
-  // 6. Anti-bot signals (honeypot + dwell time).
+  // 6. Anti-bot signals (honeypot + dwell time). Honeypot trips trigger
+  // an immediate ban — we still log internally with the specific reason
+  // for forensics, but the client always sees the same generic 400.
   const antibot = checkAntiBot({
     honeypot: body._hp,
     formStartedAt: body._t,
   })
   if (!antibot.ok) {
-    // Honeypot trip is a high-confidence attack signal — escalate to ban.
     if (antibot.reason === "honeypot") {
       await banIp(ip, "honeypot", 7 * 24 * 60 * 60)
     }
     logSecurityEvent({ ip, reason: `bot:${antibot.reason}`, status: 400, ua })
-    return fail(400, "No pudimos validar tu solicitud.", antibot.reason)
+    return fail(400, "No pudimos validar tu solicitud.")
   }
 
   // 7. Look up variants + their products.
@@ -351,7 +360,11 @@ export async function POST(request: Request) {
       whatsappUrl,
     })
   } catch (err) {
-    console.error("[orders] failed to create order", err)
-    return fail(500, "No pudimos crear el pedido. Intenta de nuevo.", "internal")
+    // Only log the message, never the full error object — Postgres
+    // exceptions sometimes carry the failed row, which would leak PII
+    // (phone, name, address) into the container's stdout.
+    const msg = err instanceof Error ? err.message : "unknown"
+    console.error("[orders] failed to create order:", msg)
+    return fail(500, "No pudimos crear el pedido. Intenta de nuevo.")
   }
 }

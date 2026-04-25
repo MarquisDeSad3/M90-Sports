@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation"
 import { ProductForm } from "@/components/admin/product-form"
 import { getProduct } from "@/lib/queries/products"
+import { requireAdmin } from "@/lib/auth"
+import { isAtLeastManager } from "@/lib/auth/roles"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -8,7 +10,13 @@ interface PageProps {
 
 export default async function EditProductPage({ params }: PageProps) {
   const { id } = await params
-  const product = await getProduct(id)
+  const [admin, product] = await Promise.all([requireAdmin(), getProduct(id)])
   if (!product) notFound()
-  return <ProductForm mode="edit" product={product} />
+
+  // Only owners and managers see (and can set) the unit cost — staff
+  // and viewers don't need margin information to fulfill orders.
+  const canSeeCost = isAtLeastManager(admin.admin.role)
+  const safe = canSeeCost ? product : { ...product, costPerItem: undefined }
+
+  return <ProductForm mode="edit" product={safe} canSeeCost={canSeeCost} />
 }

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { eq, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { orders, payments } from "@/lib/db/schema"
-import { requireAdmin } from "@/lib/auth"
+import { requireAdminRole } from "@/lib/auth"
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
 
@@ -21,7 +21,7 @@ async function setOrderStatus(
     cancelledReason: string | null
   }>
 ): Promise<ActionResult> {
-  await requireAdmin()
+  await requireAdminRole("staff")
   try {
     await db
       .update(orders)
@@ -44,7 +44,7 @@ export async function confirmOrder(id: string) {
 }
 
 export async function approvePayment(id: string) {
-  await requireAdmin()
+  await requireAdminRole("staff")
   try {
     // Mark all payments of this order as verified
     await db
@@ -71,7 +71,7 @@ export async function approvePayment(id: string) {
 }
 
 export async function rejectPayment(id: string, reason?: string) {
-  await requireAdmin()
+  await requireAdminRole("staff")
   try {
     await db
       .update(payments)

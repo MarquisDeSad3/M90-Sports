@@ -51,6 +51,11 @@ import {
 interface ProductFormProps {
   product?: MockProduct
   mode: "create" | "edit"
+  /**
+   * Whether the current admin can see/edit unit cost. Owners and
+   * managers see margin info; staff and viewers don't.
+   */
+  canSeeCost?: boolean
 }
 
 function slugify(s: string) {
@@ -63,7 +68,11 @@ function slugify(s: string) {
     .slice(0, 80)
 }
 
-export function ProductForm({ product, mode }: ProductFormProps) {
+export function ProductForm({
+  product,
+  mode,
+  canSeeCost = false,
+}: ProductFormProps) {
   const router = useRouter()
   const [saving, setSaving] = React.useState(false)
 
@@ -563,25 +572,27 @@ export function ProductForm({ product, mode }: ProductFormProps) {
                   />
                 </div>
               </div>
-              <Separator />
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="cost">Coste por unidad (privado)</Label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    $
-                  </span>
-                  <Input
-                    id="cost"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={costPerItem}
-                    onChange={(e) => setCostPerItem(e.target.value)}
-                    placeholder="28.00"
-                    className="pl-7 tabular-nums"
-                  />
-                </div>
-                {basePrice && costPerItem && (
+              {canSeeCost && (
+                <>
+                  <Separator />
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="cost">Coste por unidad (privado)</Label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        id="cost"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={costPerItem}
+                        onChange={(e) => setCostPerItem(e.target.value)}
+                        placeholder="28.00"
+                        className="pl-7 tabular-nums"
+                      />
+                    </div>
+                    {basePrice && costPerItem && (
                   <span className="mt-0.5 inline-flex items-center gap-1.5 text-xs">
                     <CheckCircle2 className="size-3 text-emerald-500" />
                     <span className="text-muted-foreground">Margen:</span>
@@ -597,7 +608,9 @@ export function ProductForm({ product, mode }: ProductFormProps) {
                     </span>
                   </span>
                 )}
-              </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
 import { products, variants } from "@/lib/db/schema"
-import { requireAdmin } from "@/lib/auth"
+import { requireAdminRole } from "@/lib/auth"
 import type {
   League,
   ProductStatus,
@@ -68,7 +68,7 @@ function validateInput(input: ProductInput): string | null {
 export async function createProduct(
   input: ProductInput
 ): Promise<ActionResult<{ id: string }>> {
-  await requireAdmin()
+  await requireAdminRole("manager")
 
   const validationError = validateInput(input)
   if (validationError) return { ok: false, error: validationError }
@@ -129,7 +129,7 @@ export async function updateProduct(
   id: string,
   input: ProductInput
 ): Promise<ActionResult<{ id: string }>> {
-  await requireAdmin()
+  await requireAdminRole("manager")
 
   const validationError = validateInput(input)
   if (validationError) return { ok: false, error: validationError }
@@ -192,7 +192,7 @@ export async function updateProduct(
 export async function deleteProduct(
   id: string
 ): Promise<ActionResult<{ id: string }>> {
-  await requireAdmin()
+  await requireAdminRole("manager")
   try {
     await db
       .update(products)

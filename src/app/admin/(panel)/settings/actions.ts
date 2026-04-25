@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { requireAdmin } from "@/lib/auth"
+import { requireAdminRole } from "@/lib/auth"
 import { saveSiteSettings, type SiteSettings } from "@/lib/queries/settings"
 
 /**
@@ -69,9 +69,15 @@ export async function saveSettingsAction(
 ): Promise<SaveSettingsState> {
   let admin
   try {
-    admin = await requireAdmin()
-  } catch {
-    return { ok: false, message: "No autenticado." }
+    admin = await requireAdminRole("owner")
+  } catch (err) {
+    return {
+      ok: false,
+      message:
+        (err as Error)?.message === "FORBIDDEN"
+          ? "No tienes permisos para cambiar la configuración."
+          : "No autenticado.",
+    }
   }
 
   const raw: SiteSettings = {
@@ -127,7 +133,10 @@ export async function saveSettingsAction(
     revalidatePath("/admin/settings")
     return { ok: true, message: "Cambios guardados." }
   } catch (err) {
-    console.error("[settings] save failed", err)
+    // Log only the message — the full error can carry the values we
+    // were trying to write (e.g. payment account numbers).
+    const msg = err instanceof Error ? err.message : "unknown"
+    console.error("[settings] save failed:", msg)
     return { ok: false, message: "No se pudo guardar. Intenta de nuevo." }
   }
 }

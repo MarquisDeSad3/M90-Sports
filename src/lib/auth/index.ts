@@ -1,6 +1,7 @@
 import "server-only"
 import { cookies } from "next/headers"
 import { hashPassword, verifyPassword } from "./password"
+import { meetsRole, type AdminRole } from "./roles"
 import {
   createSession,
   deleteSession,
@@ -30,6 +31,22 @@ export async function requireAdmin(): Promise<AuthenticatedAdmin> {
   const admin = await getCurrentAdmin()
   if (!admin) {
     throw new Error("UNAUTHORIZED")
+  }
+  return admin
+}
+
+/**
+ * Role-gated variant. Use the minimum role needed — `staff` for daily
+ * operations, `manager` for catalog edits, `owner` for sensitive config.
+ * Throws FORBIDDEN if the session is valid but the role isn't enough,
+ * UNAUTHORIZED if there's no session at all.
+ */
+export async function requireAdminRole(
+  minimumRole: AdminRole,
+): Promise<AuthenticatedAdmin> {
+  const admin = await requireAdmin()
+  if (!meetsRole(admin.admin.role, minimumRole)) {
+    throw new Error("FORBIDDEN")
   }
   return admin
 }

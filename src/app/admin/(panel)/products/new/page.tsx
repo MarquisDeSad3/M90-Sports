@@ -1,5 +1,13 @@
 import { ProductForm } from "@/components/admin/product-form"
+import { requireAdmin } from "@/lib/auth"
+import { isAtLeastManager } from "@/lib/auth/roles"
 
-export default function NewProductPage() {
-  return <ProductForm mode="create" />
+export default async function NewProductPage() {
+  const admin = await requireAdmin()
+  return (
+    <ProductForm
+      mode="create"
+      canSeeCost={isAtLeastManager(admin.admin.role)}
+    />
+  )
 }
