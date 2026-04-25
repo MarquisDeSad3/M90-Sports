@@ -1,19 +1,36 @@
-import { ShieldUser } from "lucide-react"
-import { PageStub } from "@/components/admin/page-stub"
+import { redirect } from "next/navigation"
+import { requireAdmin } from "@/lib/auth"
+import { isOwner } from "@/lib/auth/roles"
+import { getStaff } from "@/lib/queries/staff"
+import { StaffManager } from "./staff-manager"
 
-export default function StaffPage() {
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+export default async function StaffPage() {
+  const acting = await requireAdmin()
+  if (!isOwner(acting.admin.role)) {
+    // Only owners manage the team. Bounce non-owners back to the dashboard.
+    redirect("/admin")
+  }
+
+  const staff = await getStaff()
+
   return (
-    <PageStub
-      title="Equipo"
-      description="Gestiona los administradores y permisos del panel."
-      icon={ShieldUser}
-      todo={[
-        "Invitar nuevos managers o staff por email",
-        "Asignar roles: Owner, Manager, Staff, Viewer",
-        "Activar/revocar acceso de un click",
-        "Ver actividad reciente de cada admin",
-        "Configurar 2FA obligatorio",
-      ]}
-    />
+    <div className="flex flex-col gap-5 p-4 md:gap-6 md:p-6">
+      <div className="flex flex-col gap-1">
+        <p className="text-sm text-muted-foreground">Solo el dueño accede aquí</p>
+        <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
+          Equipo del panel
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Crea cuentas para tu equipo, asigna su rol y revoca acceso cuando
+          necesites. Cambiar el rol o eliminar a alguien cierra sus sesiones
+          al instante.
+        </p>
+      </div>
+
+      <StaffManager initial={staff} currentAdminId={acting.admin.id} />
+    </div>
   )
 }
