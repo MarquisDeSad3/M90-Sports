@@ -85,7 +85,7 @@ export default function AdminLoginPage() {
                     id="email"
                     name="email"
                     type="email"
-                    placeholder="ever@m90-sports.com"
+                    placeholder="tu@email.com"
                     autoComplete="email"
                     required
                     className="h-11 pl-10"
