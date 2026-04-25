@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import { ProductForm } from "@/components/admin/product-form"
-import { mockProducts } from "@/lib/mock-data"
+import { getProduct } from "@/lib/queries/products"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -8,7 +8,7 @@ interface PageProps {
 
 export default async function EditProductPage({ params }: PageProps) {
   const { id } = await params
-  const product = mockProducts.find((p) => p.id === id)
+  const product = await getProduct(id)
   if (!product) notFound()
   return <ProductForm mode="edit" product={product} />
 }

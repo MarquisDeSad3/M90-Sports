@@ -30,6 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  createProduct as createProductAction,
+  updateProduct as updateProductAction,
+  deleteProduct as deleteProductAction,
+} from "@/app/admin/(panel)/products/actions"
+import {
   ImageUploader,
   type UploadedImage,
 } from "./image-uploader"
@@ -130,25 +135,64 @@ export function ProductForm({ product, mode }: ProductFormProps) {
     setTags(tags.filter((x) => x !== t))
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setSaving(true)
-    setTimeout(() => {
-      setSaving(false)
-      toast.success(
-        mode === "create"
-          ? "Producto creado correctamente"
-          : "Cambios guardados",
-        {
-          description: mode === "create" ? "Conecta la BD para persistir." : undefined,
-        }
-      )
-      router.push("/admin/products")
-    }, 700)
+
+    const input = {
+      name: name.trim(),
+      slug: slug || name.toLowerCase().replace(/\s+/g, "-"),
+      description: description || undefined,
+      team: team || undefined,
+      player: player || undefined,
+      number: number || undefined,
+      season: season || undefined,
+      league,
+      versionType,
+      status,
+      basePrice: Number(basePrice) || 0,
+      compareAtPrice: compareAtPrice ? Number(compareAtPrice) : undefined,
+      costPerItem: costPerItem ? Number(costPerItem) : undefined,
+      featured,
+      isPreorder,
+      preorderReleaseDate: isPreorder && preorderDate ? preorderDate : undefined,
+      variants: variants.map((v) => ({
+        size: v.size,
+        stock: v.stock,
+        sku: v.sku,
+        price: v.price,
+      })),
+    }
+
+    const result =
+      mode === "create"
+        ? await createProductAction(input)
+        : await updateProductAction(product!.id, input)
+
+    setSaving(false)
+    if (!result.ok) {
+      toast.error("No se pudo guardar", { description: result.error })
+      return
+    }
+    toast.success(
+      mode === "create" ? "Producto creado" : "Cambios guardados"
+    )
+    router.push("/admin/products")
   }
 
-  const handleDelete = () => {
-    toast.error("Producto eliminado", { description: "Mock — sin BD aún." })
+  const [deleting, setDeleting] = React.useState(false)
+  const handleDelete = async () => {
+    if (!product) return
+    if (!confirm("¿Seguro que quieres eliminar este producto?")) return
+    setDeleting(true)
+    const result = await deleteProductAction(product.id)
+    setDeleting(false)
+    if (result && !result.ok) {
+      toast.error("No se pudo eliminar", { description: result.error })
+      return
+    }
+    toast.success("Producto eliminado")
+    // deleteProductAction redirects internally, but just in case:
     router.push("/admin/products")
   }
 
