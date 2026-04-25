@@ -1,19 +1,26 @@
-import { Settings } from "lucide-react"
-import { PageStub } from "@/components/admin/page-stub"
+import { getSiteSettings } from "@/lib/queries/settings"
+import { SettingsForm } from "./settings-form"
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+export default async function SettingsPage() {
+  const settings = await getSiteSettings()
+
   return (
-    <PageStub
-      title="Configuración"
-      description="Marca, monedas, métodos de pago y datos de contacto."
-      icon={Settings}
-      todo={[
-        "Datos generales del negocio (nombre, logo, contacto)",
-        "Métodos de pago activos y cuentas asociadas",
-        "Tasas de cambio: USD / CUP / MLC / EUR",
-        "Configurar WhatsApp, redes sociales, pixel de Meta",
-        "Plantillas de email y WhatsApp para notificaciones",
-      ]}
-    />
+    <div className="flex flex-col gap-5 p-4 md:gap-6 md:p-6">
+      <div className="flex flex-col gap-1">
+        <p className="text-sm text-muted-foreground">Configuración del sitio</p>
+        <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
+          Ajustes
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Datos del negocio, métodos de pago, costos de envío y redes
+          sociales. Los cambios se aplican al instante.
+        </p>
+      </div>
+
+      <SettingsForm initial={settings} />
+    </div>
   )
 }

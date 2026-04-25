@@ -13,19 +13,34 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-const data = [
-  { day: "Lun", sales: 480 },
-  { day: "Mar", sales: 720 },
-  { day: "Mié", sales: 560 },
-  { day: "Jue", sales: 980 },
-  { day: "Vie", sales: 1240 },
-  { day: "Sáb", sales: 1580 },
-  { day: "Dom", sales: 1340 },
+interface DailyPoint {
+  day: string
+  sales: number
+}
+
+interface SalesChartProps {
+  data?: DailyPoint[]
+  weekTotal?: number
+  weekDeltaLabel?: string
+}
+
+const FALLBACK: DailyPoint[] = [
+  { day: "Lun", sales: 0 },
+  { day: "Mar", sales: 0 },
+  { day: "Mié", sales: 0 },
+  { day: "Jue", sales: 0 },
+  { day: "Vie", sales: 0 },
+  { day: "Sáb", sales: 0 },
+  { day: "Dom", sales: 0 },
 ]
 
-const total = data.reduce((s, d) => s + d.sales, 0)
-
-export function SalesChart() {
+export function SalesChart({
+  data,
+  weekTotal,
+  weekDeltaLabel,
+}: SalesChartProps = {}) {
+  const points = data && data.length > 0 ? data : FALLBACK
+  const total = weekTotal ?? points.reduce((s, d) => s + d.sales, 0)
   return (
     <Card className="overflow-hidden rounded-xl border-border/70 bg-card shadow-card">
       <CardHeader className="border-b border-border/60 pb-5">
@@ -38,12 +53,14 @@ export function SalesChart() {
               <span className="font-display text-3xl tracking-tight tabular-nums leading-none text-foreground">
                 ${total.toLocaleString()}
               </span>
-              <Badge
-                variant="secondary"
-                className="bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold"
-              >
-                +18% vs semana ant.
-              </Badge>
+              {weekDeltaLabel && (
+                <Badge
+                  variant="secondary"
+                  className="bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold"
+                >
+                  {weekDeltaLabel}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -52,7 +69,7 @@ export function SalesChart() {
         <div className="h-[260px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={data}
+              data={points}
               margin={{ top: 12, right: 18, left: 0, bottom: 0 }}
             >
               <defs>
