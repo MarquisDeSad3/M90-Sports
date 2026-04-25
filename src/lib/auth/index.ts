@@ -13,7 +13,17 @@ export const SESSION_COOKIE = "m90_admin_session"
 export async function getCurrentAdmin(): Promise<AuthenticatedAdmin | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get(SESSION_COOKIE)?.value
-  return validateSession(token)
+  try {
+    return await validateSession(token)
+  } catch (err) {
+    // Local dev without DATABASE_URL → behave as anonymous so /admin/login
+    // still renders and we don't crash the whole route tree.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[auth] getCurrentAdmin failed:", err)
+      return null
+    }
+    throw err
+  }
 }
 
 export async function requireAdmin(): Promise<AuthenticatedAdmin> {
