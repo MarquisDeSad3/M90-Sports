@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* Familiar Pro is loaded via next/font/local in layout.tsx so the asset path
+   is rewritten correctly for basePath (static export under /m90). */
+
+@theme {
+  /* M90 palette extracted directly from brand SVG */
+  --color-navy: #011b53;
+  --color-navy-900: #00102f;
+  --color-navy-700: #0a2a75;
+  --color-red: #980e21;
+  --color-red-bright: #c31428;
+  --color-cream: #efd9a3;
+  --color-cream-soft: #f7ebc8;
+  --color-green: #24b24e;
+  --color-ink: #0a0d1a;
+
+  --font-display: var(--font-familiar-pro), "Arial Black", sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --shadow-brand: 0 24px 60px -20px rgba(1, 27, 83, 0.35);
+  --shadow-brand-red: 0 20px 50px -18px rgba(152, 14, 33, 0.45);
+}
+
+html,
+body {
+  background: var(--color-cream-soft);
+  color: var(--color-navy);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  overflow-x: clip;
+  max-width: 100vw;
+  /* Disable the horizontal swipe gesture on iOS that sometimes reveals
+     off-canvas siblings, and block pinch-zoom (user-scalable=no already
+     helps but Safari can still swipe-zoom without this). */
+  touch-action: pan-y;
+}
+
+/* Display type */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+}
+
+/* Reusable retro sport stripe (inspired by vintage jersey tags) */
+.stripe-flag {
+  background: linear-gradient(
+    180deg,
+    #011b53 0 25%,
+    #f7ebc8 25% 50%,
+    #980e21 50% 75%,
+    #011b53 75% 100%
+  );
+}
+
+/* Noise texture overlay for depth */
+.noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+}
+
+/* Ticker marquee */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+.animate-marquee-slow {
+  animation: marquee 60s linear infinite;
+}
+
+/* Hero diagonal sweep */
+@keyframes sweep {
+  0% {
+    transform: translate(-15%, -15%);
+  }
+  100% {
+    transform: translate(15%, 15%);
+  }
+}
+
+/* Reduce motion when user prefers */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-slow {
+    animation-duration: 0s !important;
+  }
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Selection color */
+::selection {
+  background: var(--color-navy);
+  color: var(--color-cream);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream-soft);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-navy);
+}

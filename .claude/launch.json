@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "m90-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "m90-sports", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}
