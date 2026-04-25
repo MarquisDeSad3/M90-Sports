@@ -5,7 +5,8 @@ import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion"
 import { X, MessageCircle, ArrowUpRight, ShoppingBag } from "lucide-react";
 import { Logo } from "./logo";
 import { asset, cn, whatsappUrl } from "@/lib/utils";
-import { useCart } from "@/lib/cart-store";
+import { useCart } from "@/lib/cart/use-cart";
+import { CartDrawer } from "@/components/public/cart-drawer";
 
 const LINKS = [
   { href: "#catalogo", label: "Catálogo", num: "01" },
@@ -19,9 +20,11 @@ export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const { scrollYProgress } = useScroll();
   const progressScale = useTransform(scrollYProgress, [0, 1], [0, 1]);
-  const { count, dispatch } = useCart();
+  const { totals, hydrated } = useCart();
+  const count = hydrated ? totals.itemCount : 0;
 
   useEffect(() => {
     let prev = typeof window !== "undefined" ? window.scrollY : 0;
@@ -124,7 +127,7 @@ export function Nav() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
-                onClick={() => dispatch({ type: "OPEN" })}
+                onClick={() => setCartOpen(true)}
                 className="group relative inline-flex h-10 items-center gap-2 rounded-full border border-[color:var(--color-navy)]/20 bg-white/60 px-3 text-[color:var(--color-navy)] backdrop-blur transition-all hover:border-[color:var(--color-navy)] hover:bg-[color:var(--color-navy)] hover:text-[color:var(--color-cream)]"
                 aria-label="Abrir carrito"
               >
@@ -194,6 +197,8 @@ export function Nav() {
       <AnimatePresence>
         {open ? <MobileDrawer onClose={() => setOpen(false)} /> : null}
       </AnimatePresence>
+
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </>
   );
 }

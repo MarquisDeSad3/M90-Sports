@@ -7,7 +7,7 @@ import { Testimonials } from "@/components/testimonials"
 import { Faq } from "@/components/faq"
 import { FooterCta } from "@/components/footer-cta"
 import { WhatsappFloat } from "@/components/whatsapp-float"
-import { StorefrontHeader } from "@/components/public/storefront-header"
+import { Nav } from "@/components/nav"
 import { StoreSection } from "@/components/public/store-section"
 import { getPublicProducts } from "@/lib/queries/public-products"
 
@@ -25,7 +25,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <StorefrontHeader />
+      <Nav />
       <main>
         <Hero />
         <Categories />
