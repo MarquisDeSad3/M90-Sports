@@ -2,29 +2,29 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react"
-import { toast } from "sonner"
+import {
+  AlertCircle,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  ShieldCheck,
+} from "lucide-react"
+import { useActionState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AdminLogo } from "@/components/admin/admin-logo"
+import { loginAction, type LoginState } from "./actions"
 
 export default function AdminLoginPage() {
-  const router = useRouter()
+  const [state, formAction, isPending] = useActionState<LoginState, FormData>(
+    loginAction,
+    null
+  )
   const [showPassword, setShowPassword] = React.useState(false)
-  const [loading, setLoading] = React.useState(false)
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setLoading(true)
-    // Mock auth — real implementation pending
-    setTimeout(() => {
-      setLoading(false)
-      toast.success("Bienvenido de vuelta, Ever")
-      router.push("/admin")
-    }, 700)
-  }
 
   return (
     <div className="admin-scope relative grid min-h-svh place-items-center overflow-hidden bg-background p-4 text-foreground antialiased">
@@ -59,10 +59,7 @@ export default function AdminLoginPage() {
           {/* Top accent line */}
           <div className="h-1 w-full bg-gradient-to-r from-[#011b53] via-[#980e21] to-[#efd9a3]" />
 
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-5 p-6 sm:p-8"
-          >
+          <form action={formAction} className="flex flex-col gap-5 p-6 sm:p-8">
             <div className="flex flex-col gap-1.5">
               <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                 Acceso al panel
@@ -72,6 +69,13 @@ export default function AdminLoginPage() {
               </p>
             </div>
 
+            {state?.error && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2.5 text-sm">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                <span className="text-destructive">{state.error}</span>
+              </div>
+            )}
+
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="email">Email</Label>
@@ -79,11 +83,13 @@ export default function AdminLoginPage() {
                   <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     placeholder="ever@m90-sports.com"
                     autoComplete="email"
                     required
                     className="h-11 pl-10"
+                    disabled={isPending}
                   />
                 </div>
               </div>
@@ -102,11 +108,13 @@ export default function AdminLoginPage() {
                   <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     autoComplete="current-password"
                     required
                     className="h-11 px-10"
+                    disabled={isPending}
                   />
                   <button
                     type="button"
@@ -115,6 +123,7 @@ export default function AdminLoginPage() {
                     aria-label={
                       showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
                     }
+                    tabIndex={-1}
                   >
                     {showPassword ? (
                       <EyeOff className="size-4" />
@@ -129,10 +138,10 @@ export default function AdminLoginPage() {
             <Button
               type="submit"
               size="lg"
-              disabled={loading}
+              disabled={isPending}
               className="group h-11 gap-2 text-sm font-semibold"
             >
-              {loading ? (
+              {isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   Entrando...

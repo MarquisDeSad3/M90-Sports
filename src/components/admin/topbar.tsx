@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { logoutAction } from "@/app/admin/login/actions"
 import { ModeToggle } from "./mode-toggle"
 import { MobileDrawer } from "./mobile-drawer"
 
@@ -34,16 +35,36 @@ function findCurrentTitle(pathname: string): string {
   return "Admin"
 }
 
-const MOCK_ADMIN = {
-  name: "Ever",
-  email: "ever@m90-sports.com",
-  role: "Owner",
-  initials: "EV",
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("")
 }
 
-export function AdminTopbar() {
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Owner",
+  manager: "Manager",
+  staff: "Staff",
+  viewer: "Viewer",
+}
+
+interface AdminTopbarProps {
+  admin: {
+    id: string
+    email: string
+    name: string
+    role: "owner" | "manager" | "staff" | "viewer"
+  }
+}
+
+export function AdminTopbar({ admin }: AdminTopbarProps) {
   const pathname = usePathname()
   const title = findCurrentTitle(pathname)
+  const initials = getInitials(admin.name)
+  const roleLabel = ROLE_LABEL[admin.role] ?? admin.role
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur-md md:gap-4 md:px-6">
@@ -160,25 +181,25 @@ export function AdminTopbar() {
             >
               <Avatar className="size-7">
                 <AvatarFallback className="bg-primary text-[11px] font-bold text-primary-foreground">
-                  {MOCK_ADMIN.initials}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden text-sm font-medium md:inline">
-                {MOCK_ADMIN.name}
+                {admin.name}
               </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[220px]">
             <DropdownMenuLabel className="flex flex-col">
-              <span className="text-sm font-semibold">{MOCK_ADMIN.name}</span>
+              <span className="text-sm font-semibold">{admin.name}</span>
               <span className="truncate text-xs font-normal text-muted-foreground">
-                {MOCK_ADMIN.email}
+                {admin.email}
               </span>
               <Badge
                 variant="outline"
                 className="mt-1.5 w-fit border-primary/30 text-[10px]"
               >
-                {MOCK_ADMIN.role}
+                {roleLabel}
               </Badge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -195,12 +216,15 @@ export function AdminTopbar() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" asChild>
-              <Link href="/admin/login">
-                <LogOut className="size-4" />
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-hidden transition-colors hover:bg-destructive/10 focus:bg-destructive/10 [&_svg]:pointer-events-none [&_svg]:size-4"
+              >
+                <LogOut />
                 Cerrar sesión
-              </Link>
-            </DropdownMenuItem>
+              </button>
+            </form>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
