@@ -93,7 +93,7 @@ export function SalesChart() {
                     "0 4px 12px -2px rgb(1 27 83 / 0.08), 0 12px 32px -8px rgb(1 27 83 / 0.12)",
                   padding: "8px 12px",
                 }}
-                formatter={(value: number) => [`$${value}`, "Ventas"]}
+                formatter={(value) => [`$${Number(value).toLocaleString()}`, "Ventas"]}
                 labelStyle={{ color: "var(--muted-foreground)", fontSize: 11 }}
               />
               <Area
