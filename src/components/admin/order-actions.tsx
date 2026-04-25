@@ -17,26 +17,61 @@ import {
   AlertCircle,
 } from "lucide-react"
 import type { MockOrder } from "@/lib/mock-orders"
+import {
+  approvePayment,
+  cancelOrder,
+  confirmOrder,
+  markDelivered,
+  markPaidCoD,
+  markPreparing,
+  markShipped,
+  rejectPayment,
+} from "@/app/admin/(panel)/orders/actions"
 
 interface OrderActionsProps {
   order: MockOrder
 }
 
+type ServerAction = (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
+
 export function OrderActions({ order }: OrderActionsProps) {
   const router = useRouter()
   const [loading, setLoading] = React.useState(false)
 
-  const trigger = (
+  const run = async (
+    action: ServerAction,
     successMsg: string,
-    description: string,
+    description?: string,
     redirectBack = false
   ) => {
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      toast.success(successMsg, { description })
-      if (redirectBack) router.push("/admin/orders")
-    }, 700)
+    const result = await action(order.id)
+    setLoading(false)
+    if (!result.ok) {
+      toast.error("No se pudo completar la acción", {
+        description: result.error,
+      })
+      return
+    }
+    toast.success(successMsg, description ? { description } : undefined)
+    if (redirectBack) {
+      router.push("/admin/orders")
+    } else {
+      router.refresh()
+    }
+  }
+
+  const trigger = (
+    successMsg: string,
+    description: string,
+    redirectBack = false,
+    action?: ServerAction
+  ) => {
+    if (!action) {
+      // Fallback for terminal states already handled above
+      return
+    }
+    void run(action, successMsg, description, redirectBack)
   }
 
   // Cancelled or Delivered — terminal state, no action
@@ -98,7 +133,8 @@ export function OrderActions({ order }: OrderActionsProps) {
               trigger(
                 "Pedido confirmado",
                 "Avisa al cliente para que proceda con el pago.",
-                true
+                true,
+                confirmOrder
               )
             }
           >
@@ -112,9 +148,10 @@ export function OrderActions({ order }: OrderActionsProps) {
           <Button
             type="button"
             variant="outline"
+            disabled={loading}
             className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
             onClick={() =>
-              trigger("Pedido cancelado", "Marcado como cancelado.", true)
+              trigger("Pedido cancelado", "Marcado como cancelado.", true, cancelOrder)
             }
           >
             <XCircle className="size-4" />
@@ -141,12 +178,14 @@ export function OrderActions({ order }: OrderActionsProps) {
             <Button
               type="button"
               variant="outline"
+              disabled={loading}
               className="gap-2"
               onClick={() =>
                 trigger(
                   "Marcado como pagado",
                   "Pasa a preparación.",
-                  true
+                  true,
+                  markPaidCoD
                 )
               }
             >
@@ -186,12 +225,14 @@ export function OrderActions({ order }: OrderActionsProps) {
           </div>
           <Button
             type="button"
+            disabled={loading}
             className="gap-2"
             onClick={() =>
               trigger(
                 "Pago verificado",
                 "Pedido pasa a preparación.",
-                true
+                true,
+                approvePayment
               )
             }
           >
@@ -201,12 +242,14 @@ export function OrderActions({ order }: OrderActionsProps) {
           <Button
             type="button"
             variant="outline"
+            disabled={loading}
             className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
             onClick={() =>
               trigger(
                 "Pago rechazado",
                 "Cliente debe reenviar comprobante.",
-                false
+                false,
+                rejectPayment
               )
             }
           >
@@ -219,12 +262,14 @@ export function OrderActions({ order }: OrderActionsProps) {
       {order.status === "paid" && (
         <Button
           type="button"
+          disabled={loading}
           className="gap-2"
           onClick={() =>
             trigger(
               "Marcado como preparando",
               "Empaqueta y prepara para envío.",
-              true
+              true,
+              markPreparing
             )
           }
         >
@@ -236,12 +281,14 @@ export function OrderActions({ order }: OrderActionsProps) {
       {order.status === "preparing" && (
         <Button
           type="button"
+          disabled={loading}
           className="gap-2"
           onClick={() =>
             trigger(
               "Pedido enviado",
               "Cliente recibirá notificación.",
-              true
+              true,
+              markShipped
             )
           }
         >
@@ -253,12 +300,14 @@ export function OrderActions({ order }: OrderActionsProps) {
       {order.status === "shipped" && (
         <Button
           type="button"
+          disabled={loading}
           className="gap-2"
           onClick={() =>
             trigger(
               "Pedido entregado",
               "¡Genial! Pedido completado.",
-              true
+              true,
+              markDelivered
             )
           }
         >
@@ -275,9 +324,10 @@ export function OrderActions({ order }: OrderActionsProps) {
           type="button"
           variant="ghost"
           size="sm"
+          disabled={loading}
           className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
           onClick={() =>
-            trigger("Pedido cancelado", "Marcado como cancelado.", true)
+            trigger("Pedido cancelado", "Marcado como cancelado.", true, cancelOrder)
           }
         >
           <XCircle className="size-4" />

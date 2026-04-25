@@ -20,8 +20,8 @@ import { OrderStatusBadge } from "@/components/admin/order-status-badge"
 import { OrderTimeline } from "@/components/admin/order-timeline"
 import { OrderActions } from "@/components/admin/order-actions"
 import { ProductImage } from "@/components/admin/product-image"
+import { getOrder } from "@/lib/queries/orders"
 import {
-  mockOrders,
   ORDER_SOURCE_LABEL,
   PAYMENT_METHOD_LABEL,
   timeAgo,
@@ -33,7 +33,7 @@ interface PageProps {
 
 export default async function OrderDetailPage({ params }: PageProps) {
   const { id } = await params
-  const order = mockOrders.find((o) => o.id === id)
+  const order = await getOrder(id)
   if (!order) notFound()
 
   return (
