@@ -2,7 +2,14 @@
 
 import * as React from "react"
 import { useActionState } from "react"
-import { Check, KeyRound, Loader2, User as UserIcon } from "lucide-react"
+import {
+  Check,
+  KeyRound,
+  Loader2,
+  Trash2,
+  Upload,
+  User as UserIcon,
+} from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -55,9 +62,36 @@ function ProfileCard({ initial }: { initial: InitialProfile }) {
     updateProfileAction,
     initialState,
   )
-  // Track the photoUrl in local state so the avatar preview updates
-  // immediately as the admin types/pastes a new URL.
+  // Mirrors the saved photo URL. Updated as the admin uploads or removes
+  // the photo so the avatar preview reflects pending changes before saving.
   const [photoUrl, setPhotoUrl] = React.useState(initial.photoUrl ?? "")
+  const [uploading, setUploading] = React.useState(false)
+  const [uploadError, setUploadError] = React.useState<string | null>(null)
+  const fileRef = React.useRef<HTMLInputElement>(null)
+
+  async function handleFile(file: File) {
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const form = new FormData()
+      form.append("file", file)
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: form,
+      })
+      const data = (await res.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error ?? "No se pudo subir la imagen.")
+      }
+      setPhotoUrl(data.url)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Error subiendo.")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
     <Card>
@@ -70,17 +104,61 @@ function ProfileCard({ initial }: { initial: InitialProfile }) {
       <CardContent>
         <form action={action} className="flex flex-col gap-5">
           <div className="flex items-center gap-4">
-            <Avatar className="size-16">
+            <Avatar className="size-20">
               {photoUrl ? (
                 <AvatarImage src={photoUrl} alt={initial.name} />
               ) : null}
-              <AvatarFallback className="bg-primary text-base font-bold text-primary-foreground">
+              <AvatarFallback className="bg-primary text-lg font-bold text-primary-foreground">
                 {getInitials(initial.name) || "?"}
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">{initial.email}</span>
-              <span className="text-xs text-muted-foreground">{initial.role}</span>
+            <div className="flex flex-col gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleFile(file)
+                  e.target.value = ""
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                  className="gap-2"
+                >
+                  {uploading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Upload className="size-4" />
+                  )}
+                  {uploading ? "Subiendo…" : photoUrl ? "Cambiar foto" : "Subir foto"}
+                </Button>
+                {photoUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={uploading}
+                    onClick={() => setPhotoUrl("")}
+                    className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
+                  >
+                    <Trash2 className="size-3.5" /> Quitar
+                  </Button>
+                )}
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                {initial.email} · {initial.role}
+              </span>
+              {uploadError && (
+                <span className="text-xs text-rose-600">{uploadError}</span>
+              )}
             </div>
           </div>
 
@@ -94,19 +172,9 @@ function ProfileCard({ initial }: { initial: InitialProfile }) {
             />
           </Field>
 
-          <Field
-            label="Foto (URL)"
-            hint="Pega una URL pública (ej: https://i.imgur.com/abc.jpg). Aún no soportamos subir desde el dispositivo."
-          >
-            <Input
-              name="photoUrl"
-              type="url"
-              maxLength={500}
-              placeholder="https://..."
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-            />
-          </Field>
+          {/* Hidden field carries the resolved photoUrl into the FormData
+              so the server action sees whatever the upload set. */}
+          <input type="hidden" name="photoUrl" value={photoUrl} />
 
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={pending} className="gap-2">

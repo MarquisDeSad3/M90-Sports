@@ -20,11 +20,17 @@ export type ActionState = {
 const profileSchema = z
   .object({
     name: z.string().trim().min(1, "El nombre es obligatorio").max(120),
+    // Accepts both absolute URLs (legacy or external hosts) and relative
+    // upload paths from /api/files/. We don't .url()-validate because the
+    // upload endpoint returns relative paths.
     photoUrl: z
       .string()
       .trim()
       .max(500, "URL demasiado larga")
-      .url("Debe ser una URL válida (https://…)")
+      .regex(
+        /^(https?:\/\/|\/api\/files\/)/,
+        "URL inválida",
+      )
       .optional()
       .or(z.literal("").transform(() => undefined)),
   })

@@ -5,7 +5,12 @@ import { redirect } from "next/navigation"
 import { and, eq } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
-import { productCategories, products, variants } from "@/lib/db/schema"
+import {
+  productCategories,
+  productImages,
+  products,
+  variants,
+} from "@/lib/db/schema"
 import { requireAdminRole } from "@/lib/auth"
 import type {
   League,
@@ -19,6 +24,13 @@ export interface VariantInput {
   stock: number
   sku?: string
   price?: number
+}
+
+export interface ProductImageInput {
+  url: string
+  alt: string
+  isPrimary: boolean
+  position: number
 }
 
 export interface ProductInput {
@@ -41,6 +53,9 @@ export interface ProductInput {
   variants: VariantInput[]
   /** IDs of categories the product belongs to (M:N). Empty = uncategorized. */
   categoryIds?: string[]
+  /** Ordered list of images. First with isPrimary=true wins; we coerce
+   *  exactly one primary on save. */
+  images?: ProductImageInput[]
 }
 
 export type ActionResult<T = unknown> =
@@ -122,6 +137,24 @@ export async function createProduct(
           })),
         )
       }
+
+      if (input.images && input.images.length > 0) {
+        // Coerce exactly one primary — first one if the form forgot to flag any.
+        let primarySeen = false
+        await tx.insert(productImages).values(
+          input.images.map((img, idx) => {
+            const isPrimary =
+              img.isPrimary && !primarySeen ? (primarySeen = true) : false
+            return {
+              productId,
+              url: img.url,
+              alt: img.alt || null,
+              isPrimary: isPrimary || (idx === 0 && !input.images!.some((x) => x.isPrimary)),
+              position: img.position ?? idx,
+            }
+          }),
+        )
+      }
     })
   } catch (err) {
     const msg = (err as Error).message ?? String(err)
@@ -199,6 +232,26 @@ export async function updateProduct(
             productId: id,
             categoryId,
           })),
+        )
+      }
+
+      // Replace images. Same wholesale strategy as variants — small lists,
+      // simpler than diffing.
+      await tx.delete(productImages).where(eq(productImages.productId, id))
+      if (input.images && input.images.length > 0) {
+        let primarySeen = false
+        await tx.insert(productImages).values(
+          input.images.map((img, idx) => {
+            const isPrimary =
+              img.isPrimary && !primarySeen ? (primarySeen = true) : false
+            return {
+              productId: id,
+              url: img.url,
+              alt: img.alt || null,
+              isPrimary: isPrimary || (idx === 0 && !input.images!.some((x) => x.isPrimary)),
+              position: img.position ?? idx,
+            }
+          }),
         )
       }
     })

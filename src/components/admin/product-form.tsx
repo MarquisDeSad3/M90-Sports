@@ -123,7 +123,21 @@ export function ProductForm({
     product?.categories ?? [],
   )
 
-  const [images, setImages] = React.useState<UploadedImage[]>([])
+  // Hydrate the uploader with whatever the product already has stored.
+  // The primary image goes first so the "Principal" star reflects DB truth.
+  const [images, setImages] = React.useState<UploadedImage[]>(() => {
+    if (!product) return []
+    const list: UploadedImage[] = []
+    if (product.primaryImage) {
+      list.push({
+        id: `existing_primary`,
+        url: product.primaryImage,
+        alt: product.name,
+        isPrimary: true,
+      })
+    }
+    return list
+  })
 
   const [variants, setVariants] = React.useState<VariantRow[]>(
     product?.variants?.map((v) => ({
@@ -181,6 +195,12 @@ export function ProductForm({
         price: v.price,
       })),
       categoryIds,
+      images: images.map((img, idx) => ({
+        url: img.url,
+        alt: img.alt,
+        isPrimary: img.isPrimary,
+        position: idx,
+      })),
     }
 
     const result =
