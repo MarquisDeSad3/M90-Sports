@@ -132,14 +132,12 @@ export function CategoriesManager({ initial }: ManagerProps) {
             </div>
             {items.filter((c) => c.visible && c.productCount > 0).length === 0 && (
               <p className="text-xs text-[#011b53]/60">
-                Solo se mostrará "Todo" hasta que tengas categorías visibles
-                con al menos un producto.
+                Solo aparece "Todo" hasta que añadas categorías con productos.
               </p>
             )}
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Las categorías ocultas o sin productos NO aparecen aquí ni en el
-            sitio público. Arrastra abajo para cambiar el orden.
+            Arrastra abajo para reordenar.
           </p>
         </CardContent>
       </Card>
@@ -182,8 +180,7 @@ export function CategoriesManager({ initial }: ManagerProps) {
           {items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                Aún no hay categorías. Crea la primera para organizar el
-                catálogo.
+                Aún no hay categorías.
               </p>
             </div>
           ) : (

@@ -189,7 +189,7 @@ export function ProductsListClient({
             Productos
           </h2>
           <p className="text-sm text-muted-foreground">
-            Gestiona tu catálogo: jerseys, gorras, conjuntos y más.
+            Tu catálogo.
           </p>
         </div>
         <div className="flex items-center gap-2">

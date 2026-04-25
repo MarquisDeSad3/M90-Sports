@@ -116,7 +116,7 @@ export function OrdersListClient({ orders: initialOrders, counts }: OrdersListCl
             Pedidos
           </h2>
           <p className="text-sm text-muted-foreground">
-            Confirma pedidos del WhatsApp, verifica pagos y gestiona envíos.
+            Lo que entra y lo que sale.
           </p>
         </div>
         <Button asChild size="sm" className="gap-2">
