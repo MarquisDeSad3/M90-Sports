@@ -78,6 +78,12 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = React.useState<typeof PAYMENT_METHODS[number]["value"]>("transfermovil")
   const [notes, setNotes] = React.useState("")
 
+  // Anti-bot signals (read by /api/orders). The honeypot is an
+  // invisible input — real users never see or fill it. The timestamp
+  // lets the server reject submissions that happen unrealistically fast.
+  const [honeypot, setHoneypot] = React.useState("")
+  const formStartedAt = React.useRef<number>(Date.now())
+
   React.useEffect(() => {
     if (hydrated && items.length === 0 && !submitting) {
       router.replace("/")
@@ -131,6 +137,8 @@ export default function CheckoutPage() {
           },
           paymentMethod,
           notesCustomer: notes.trim() || undefined,
+          _hp: honeypot,
+          _t: formStartedAt.current,
         }),
       })
 
@@ -182,6 +190,25 @@ export default function CheckoutPage() {
         onSubmit={handleSubmit}
         className="mx-auto flex max-w-2xl flex-col gap-6 px-5 pb-20 md:px-8"
       >
+        {/* Honeypot — kept off-screen, hidden from AT and users. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
+          style={{ position: "absolute", left: "-10000px", top: "auto" }}
+        >
+          <label>
+            Si eres humano, deja este campo en blanco.
+            <input
+              type="text"
+              name="company"
+              tabIndex={-1}
+              autoComplete="off"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+            />
+          </label>
+        </div>
+
         <h1
           className="font-display text-3xl leading-tight tracking-tight md:text-4xl"
           style={{ color: M90_NAVY }}

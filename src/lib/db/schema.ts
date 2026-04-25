@@ -676,6 +676,42 @@ export const events = pgTable(
   }),
 )
 
+/**
+ * Rate-limit buckets. One row per (key, window). Updated via UPSERT.
+ * Stale rows (reset_at < now) are ignored by the limiter and pruned by maintenance.
+ */
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull().default(0),
+    resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    resetAtIdx: index("rate_limits_reset_at_idx").on(t.resetAt),
+  }),
+)
+
+/**
+ * IP banlist. Populated by the security layer on serious abuse
+ * (honeypot trip, repeated 4xx, traffic floods).
+ */
+export const bannedIps = pgTable(
+  "banned_ips",
+  {
+    ip: text("ip").primaryKey(),
+    reason: text("reason").notNull(),
+    hits: integer("hits").notNull().default(1),
+    bannedAt: timestamp("banned_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    expiresIdx: index("banned_ips_expires_idx").on(t.expiresAt),
+  }),
+)
+
 export const notifications = pgTable(
   "notifications",
   {

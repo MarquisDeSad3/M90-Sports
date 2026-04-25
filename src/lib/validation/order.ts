@@ -1,0 +1,99 @@
+import { z } from "zod"
+
+/**
+ * Strict input schema for POST /api/orders.
+ *
+ * `.strict()` rejects unknown fields so an attacker can't smuggle
+ * extra keys into our DB inserts. Every string has an upper bound to
+ * prevent payload-size DoS (writing 100MB into `notesCustomer`).
+ */
+const phoneRegex = /^\+?[\d\s().-]{6,20}$/
+
+const trimmed = (max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1, "Requerido")
+    .max(max, `Máximo ${max} caracteres`)
+
+const optionalTrimmed = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .or(z.literal("").transform(() => undefined))
+
+export const orderItemSchema = z
+  .object({
+    variantId: trimmed(64).regex(/^var_[a-z0-9]+$/, "ID de variante inválido"),
+    quantity: z
+      .number()
+      .int("Cantidad debe ser entero")
+      .min(1, "Mínimo 1")
+      .max(20, "Máximo 20 por línea"),
+  })
+  .strict()
+
+export const customerSchema = z
+  .object({
+    name: trimmed(120),
+    phone: trimmed(20).regex(phoneRegex, "Teléfono inválido"),
+    email: optionalTrimmed(120).pipe(
+      z
+        .string()
+        .email("Email inválido")
+        .optional()
+        .or(z.literal(undefined)),
+    ),
+    country: optionalTrimmed(2),
+  })
+  .strict()
+
+export const shippingAddressSchema = z
+  .object({
+    recipientName: trimmed(120),
+    phone: trimmed(20).regex(phoneRegex, "Teléfono inválido"),
+    street: trimmed(160),
+    number: optionalTrimmed(20),
+    betweenStreets: optionalTrimmed(80),
+    neighborhood: optionalTrimmed(80),
+    municipality: trimmed(80),
+    province: z.enum([
+      "PINAR_DEL_RIO",
+      "ARTEMISA",
+      "LA_HABANA",
+      "MAYABEQUE",
+      "MATANZAS",
+    ]),
+    reference: optionalTrimmed(240),
+  })
+  .strict()
+
+export const paymentMethodSchema = z.enum([
+  "transfermovil",
+  "cash_on_delivery",
+  "zelle",
+  "paypal",
+])
+
+export const orderInputSchema = z
+  .object({
+    items: z
+      .array(orderItemSchema)
+      .min(1, "El carrito está vacío")
+      .max(20, "Demasiadas líneas en el pedido"),
+    customer: customerSchema,
+    shippingAddress: shippingAddressSchema,
+    paymentMethod: paymentMethodSchema,
+    notesCustomer: optionalTrimmed(500),
+
+    // Anti-bot signals — see lib/security/rate-limit.ts.
+    // Honeypot input — must be empty.
+    _hp: z.string().max(0).optional().or(z.literal("")),
+    // Page-render timestamp set by the client when the checkout mounted.
+    _t: z.number().int().positive().optional(),
+  })
+  .strict()
+
+export type OrderInput = z.infer<typeof orderInputSchema>

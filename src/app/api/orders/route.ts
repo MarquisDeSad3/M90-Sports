@@ -10,45 +10,36 @@ import {
   variants,
   products,
 } from "@/lib/db/schema"
+import { orderInputSchema, type OrderInput } from "@/lib/validation/order"
+import {
+  banIp,
+  checkAntiBot,
+  checkOrderLimits,
+  pruneRateLimits,
+} from "@/lib/security/rate-limit"
+import { getClientIp, looksLikeBrowser } from "@/lib/security/get-ip"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
-interface OrderItemBody {
-  variantId: string
-  quantity: number
+const MAX_BODY_BYTES = 16 * 1024 // 16KB — order payloads are tiny
+
+/** Generic error response. We never leak internals to the client. */
+function fail(status: number, message: string, code?: string) {
+  return NextResponse.json({ error: message, code }, { status })
 }
 
-interface OrderRequestBody {
-  items: OrderItemBody[]
-  customer: {
-    name: string
-    phone: string
-    email?: string
-    country?: string
-  }
-  shippingAddress: {
-    recipientName: string
-    phone: string
-    street: string
-    number?: string
-    betweenStreets?: string
-    neighborhood?: string
-    municipality: string
-    province:
-      | "PINAR_DEL_RIO"
-      | "ARTEMISA"
-      | "LA_HABANA"
-      | "MAYABEQUE"
-      | "MATANZAS"
-    reference?: string
-  }
-  paymentMethod: "transfermovil" | "cash_on_delivery" | "zelle" | "paypal"
-  notesCustomer?: string
+/** Structured server-side log for auditability (no PII beyond IP). */
+function logSecurityEvent(event: {
+  ip: string
+  reason: string
+  status: number
+  ua: string | null
+}) {
+  console.warn("[orders][security]", JSON.stringify(event))
 }
 
 function shippingCostForProvince(province: string, isDiaspora: boolean): number {
-  // Diaspora pays a flat international handling on top of local
   const base = (() => {
     switch (province) {
       case "LA_HABANA":
@@ -68,7 +59,7 @@ function shippingCostForProvince(province: string, isDiaspora: boolean): number 
 
 async function nextOrderNumber(): Promise<string> {
   const result = await db.execute(
-    sql`SELECT COALESCE(MAX(CAST(SUBSTRING(order_number FROM '[0-9]+') AS INTEGER)), 0) + 1 AS next FROM orders`
+    sql`SELECT COALESCE(MAX(CAST(SUBSTRING(order_number FROM '[0-9]+') AS INTEGER)), 0) + 1 AS next FROM orders`,
   )
   const row = result[0] as { next?: number } | undefined
   const n = row?.next ?? 1
@@ -86,7 +77,7 @@ function buildWhatsAppMessage(opts: {
   const itemsLines = opts.items
     .map(
       (it) =>
-        `• ${it.quantity}× ${it.name} (talla ${it.size.replace("KIDS_", "Niño ")}) — $${it.subtotal.toFixed(0)}`
+        `• ${it.quantity}× ${it.name} (talla ${it.size.replace("KIDS_", "Niño ")}) — $${it.subtotal.toFixed(0)}`,
     )
     .join("\n")
   const paymentLabel: Record<string, string> = {
@@ -108,33 +99,74 @@ function buildWhatsAppMessage(opts: {
 }
 
 export async function POST(request: Request) {
-  let body: OrderRequestBody
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 })
+  const ip = getClientIp(request)
+  const ua = request.headers.get("user-agent")
+
+  // 1. Cheap client-shape check — refuses obvious non-browser tooling.
+  if (!looksLikeBrowser(request)) {
+    logSecurityEvent({ ip, reason: "non-browser-ua", status: 403, ua })
+    return fail(403, "Cliente no permitido.", "bad_client")
   }
 
-  // Basic validation
-  if (!body.items || body.items.length === 0)
-    return NextResponse.json({ error: "El carrito está vacío." }, { status: 400 })
-  if (!body.customer?.name || !body.customer?.phone)
-    return NextResponse.json(
-      { error: "Faltan datos del cliente (nombre y teléfono)." },
-      { status: 400 }
-    )
-  if (!body.shippingAddress?.street || !body.shippingAddress?.municipality)
-    return NextResponse.json(
-      { error: "Falta la dirección de entrega." },
-      { status: 400 }
-    )
-  if (!body.paymentMethod)
-    return NextResponse.json(
-      { error: "Selecciona un método de pago." },
-      { status: 400 }
-    )
+  // 2. Body-size cap. Reject before parsing if Content-Length is suspicious.
+  const declaredLength = Number(request.headers.get("content-length") ?? 0)
+  if (declaredLength > MAX_BODY_BYTES) {
+    logSecurityEvent({ ip, reason: "body-too-large", status: 413, ua })
+    return fail(413, "Pedido demasiado grande.", "too_large")
+  }
 
-  // Look up variants + their products
+  // 3. Multi-tier rate limit + ban check.
+  const limit = await checkOrderLimits(ip)
+  if (!limit.ok) {
+    logSecurityEvent({ ip, reason: `rl:${limit.reason}`, status: 429, ua })
+    const retry = limit.retryAfterSeconds
+    const res = fail(
+      limit.reason === "banned" ? 403 : 429,
+      limit.reason === "banned"
+        ? "Tu acceso fue suspendido por actividad sospechosa."
+        : "Demasiadas solicitudes. Espera un momento e intenta de nuevo.",
+      limit.reason,
+    )
+    if (retry) res.headers.set("Retry-After", String(retry))
+    return res
+  }
+
+  // 4. Parse body. We already capped Content-Length; this is the safety net.
+  const text = await request.text()
+  if (text.length > MAX_BODY_BYTES) {
+    logSecurityEvent({ ip, reason: "body-too-large-actual", status: 413, ua })
+    return fail(413, "Pedido demasiado grande.", "too_large")
+  }
+  let raw: unknown
+  try {
+    raw = JSON.parse(text)
+  } catch {
+    return fail(400, "JSON inválido.", "bad_json")
+  }
+
+  // 5. Schema validation — strict mode rejects unknown fields.
+  const parsed = orderInputSchema.safeParse(raw)
+  if (!parsed.success) {
+    logSecurityEvent({ ip, reason: "schema", status: 400, ua })
+    return fail(400, "Datos del pedido inválidos.", "validation")
+  }
+  const body: OrderInput = parsed.data
+
+  // 6. Anti-bot signals (honeypot + dwell time).
+  const antibot = checkAntiBot({
+    honeypot: body._hp,
+    formStartedAt: body._t,
+  })
+  if (!antibot.ok) {
+    // Honeypot trip is a high-confidence attack signal — escalate to ban.
+    if (antibot.reason === "honeypot") {
+      await banIp(ip, "honeypot", 7 * 24 * 60 * 60)
+    }
+    logSecurityEvent({ ip, reason: `bot:${antibot.reason}`, status: 400, ua })
+    return fail(400, "No pudimos validar tu solicitud.", antibot.reason)
+  }
+
+  // 7. Look up variants + their products.
   const variantIds = body.items.map((i) => i.variantId)
   const variantRows = await db
     .select({
@@ -153,25 +185,19 @@ export async function POST(request: Request) {
     .innerJoin(products, eq(products.id, variants.productId))
     .where(
       variantIds.length === 1
-        ? eq(variants.id, variantIds[0])
-        : sql`${variants.id} = ANY(${variantIds})`
+        ? eq(variants.id, variantIds[0]!)
+        : sql`${variants.id} = ANY(${variantIds})`,
     )
 
   if (variantRows.length !== variantIds.length) {
-    return NextResponse.json(
-      { error: "Uno o más productos del carrito no están disponibles." },
-      { status: 400 }
-    )
+    return fail(400, "Uno o más productos del carrito no están disponibles.")
   }
   const unpublished = variantRows.find((v) => v.productStatus !== "published")
   if (unpublished) {
-    return NextResponse.json(
-      { error: "Uno o más productos no están publicados." },
-      { status: 400 }
-    )
+    return fail(400, "Uno o más productos no están publicados.")
   }
 
-  // Build snapshot items + totals
+  // 8. Build snapshot items + totals.
   const snapshots = body.items.map((it) => {
     const v = variantRows.find((x) => x.id === it.variantId)!
     const unitPrice = Number(v.price ?? v.basePrice)
@@ -187,133 +213,145 @@ export async function POST(request: Request) {
   })
   const subtotal = snapshots.reduce(
     (s, it) => s + it.unitPrice * it.quantity,
-    0
+    0,
   )
 
   const country = body.customer.country ?? "CU"
   const isDiaspora = country !== "CU"
   const shippingCost = shippingCostForProvince(
     body.shippingAddress.province,
-    isDiaspora
+    isDiaspora,
   )
   const total = subtotal + shippingCost
 
-  // Create / find customer (by phone)
+  // 9. Find or create customer (by phone).
   let customerId: string
-  const existing = await db
-    .select({ id: customers.id })
-    .from(customers)
-    .where(eq(customers.phone, body.customer.phone))
-    .limit(1)
-  if (existing.length > 0) {
-    customerId = existing[0].id
-  } else {
-    customerId = `cus_${createId()}`
-    await db.insert(customers).values({
-      id: customerId,
-      phone: body.customer.phone,
-      email: body.customer.email ?? null,
-      name: body.customer.name,
-      country,
-      isDiaspora,
-      hasAccount: false,
+  try {
+    const existing = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.phone, body.customer.phone))
+      .limit(1)
+    if (existing.length > 0) {
+      customerId = existing[0]!.id
+    } else {
+      customerId = `cus_${createId()}`
+      await db.insert(customers).values({
+        id: customerId,
+        phone: body.customer.phone,
+        email: body.customer.email ?? null,
+        name: body.customer.name,
+        country,
+        isDiaspora,
+        hasAccount: false,
+      })
+    }
+
+    // 10. Create address.
+    const addressId = `adr_${createId()}`
+    await db.insert(addresses).values({
+      id: addressId,
+      customerId,
+      recipientName: body.shippingAddress.recipientName,
+      phone: body.shippingAddress.phone,
+      street: body.shippingAddress.street,
+      number: body.shippingAddress.number ?? null,
+      betweenStreets: body.shippingAddress.betweenStreets ?? null,
+      neighborhood: body.shippingAddress.neighborhood ?? null,
+      municipality: body.shippingAddress.municipality,
+      province: body.shippingAddress.province,
+      reference: body.shippingAddress.reference ?? null,
+      isDefault: false,
     })
-  }
 
-  // Create address
-  const addressId = `adr_${createId()}`
-  await db.insert(addresses).values({
-    id: addressId,
-    customerId,
-    recipientName: body.shippingAddress.recipientName,
-    phone: body.shippingAddress.phone,
-    street: body.shippingAddress.street,
-    number: body.shippingAddress.number ?? null,
-    betweenStreets: body.shippingAddress.betweenStreets ?? null,
-    neighborhood: body.shippingAddress.neighborhood ?? null,
-    municipality: body.shippingAddress.municipality,
-    province: body.shippingAddress.province,
-    reference: body.shippingAddress.reference ?? null,
-    isDefault: false,
-  })
+    // 11. Order + items in a transaction.
+    const orderId = `ord_${createId()}`
+    const orderNumber = await nextOrderNumber()
 
-  // Create order + items in a transaction
-  const orderId = `ord_${createId()}`
-  const orderNumber = await nextOrderNumber()
+    await db.transaction(async (tx) => {
+      await tx.insert(orders).values({
+        id: orderId,
+        orderNumber,
+        customerId,
+        status: "pending",
+        paymentStatus: "unpaid",
+        fulfillmentStatus: "unfulfilled",
+        subtotal: String(subtotal),
+        shippingCost: String(shippingCost),
+        discountTotal: "0",
+        total: String(total),
+        currency: "USD",
+        shippingAddressId: addressId,
+        shippingMethod: "Mensajería propia",
+        paymentMethod: body.paymentMethod,
+        notesCustomer: body.notesCustomer ?? null,
+      })
 
-  await db.transaction(async (tx) => {
-    await tx.insert(orders).values({
+      await tx.insert(orderItems).values(
+        snapshots.map((s) => ({
+          id: `oitm_${createId()}`,
+          orderId,
+          variantId: s.variantId,
+          productName: s.productName,
+          variantSize: s.size,
+          sku: s.sku,
+          quantity: s.quantity,
+          unitPrice: String(s.unitPrice),
+          subtotal: String(s.unitPrice * s.quantity),
+        })),
+      )
+    })
+
+    // 12. WhatsApp link.
+    const a = body.shippingAddress
+    const shippingSummary = [
+      a.street,
+      a.number,
+      a.betweenStreets ? `(${a.betweenStreets})` : "",
+      a.neighborhood,
+      a.municipality,
+      a.province.replace(/_/g, " "),
+    ]
+      .filter(Boolean)
+      .join(", ")
+
+    const message = buildWhatsAppMessage({
+      orderNumber,
+      items: snapshots.map((s) => ({
+        name: s.productName,
+        size: s.size,
+        quantity: s.quantity,
+        subtotal: s.unitPrice * s.quantity,
+      })),
+      total,
+      customerName: body.customer.name,
+      shippingSummary,
+      paymentMethod: body.paymentMethod,
+    })
+
+    const whatsappNumber =
+      process.env.M90_WHATSAPP_NUMBER?.replace(/[^\d]/g, "") ?? "5351191461"
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+      message,
+    )}`
+
+    // Opportunistic prune — cheap and keeps the table small.
+    if (Math.random() < 0.05) {
+      pruneRateLimits().catch(() => {
+        /* best-effort */
+      })
+    }
+
+    return NextResponse.json({
       id: orderId,
       orderNumber,
-      customerId,
-      status: "pending",
-      paymentStatus: "unpaid",
-      fulfillmentStatus: "unfulfilled",
-      subtotal: String(subtotal),
-      shippingCost: String(shippingCost),
-      discountTotal: "0",
-      total: String(total),
-      currency: "USD",
-      shippingAddressId: addressId,
-      shippingMethod: "Mensajería propia",
-      paymentMethod: body.paymentMethod,
-      notesCustomer: body.notesCustomer ?? null,
+      total,
+      subtotal,
+      shippingCost,
+      whatsappUrl,
     })
-
-    await tx.insert(orderItems).values(
-      snapshots.map((s) => ({
-        id: `oitm_${createId()}`,
-        orderId,
-        variantId: s.variantId,
-        productName: s.productName,
-        variantSize: s.size,
-        sku: s.sku,
-        quantity: s.quantity,
-        unitPrice: String(s.unitPrice),
-        subtotal: String(s.unitPrice * s.quantity),
-      }))
-    )
-  })
-
-  // Compose WhatsApp link
-  const a = body.shippingAddress
-  const shippingSummary = [
-    a.street,
-    a.number,
-    a.betweenStreets ? `(${a.betweenStreets})` : "",
-    a.neighborhood,
-    a.municipality,
-    a.province.replace(/_/g, " "),
-  ]
-    .filter(Boolean)
-    .join(", ")
-
-  const message = buildWhatsAppMessage({
-    orderNumber,
-    items: snapshots.map((s) => ({
-      name: s.productName,
-      size: s.size,
-      quantity: s.quantity,
-      subtotal: s.unitPrice * s.quantity,
-    })),
-    total,
-    customerName: body.customer.name,
-    shippingSummary,
-    paymentMethod: body.paymentMethod,
-  })
-
-  const whatsappNumber =
-    process.env.M90_WHATSAPP_NUMBER?.replace(/[^\d]/g, "") ?? "5351191461"
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    message
-  )}`
-
-  return NextResponse.json({
-    id: orderId,
-    orderNumber,
-    total,
-    subtotal,
-    shippingCost,
-    whatsappUrl,
-  })
+  } catch (err) {
+    console.error("[orders] failed to create order", err)
+    return fail(500, "No pudimos crear el pedido. Intenta de nuevo.", "internal")
+  }
 }
