@@ -2,18 +2,20 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Archive,
   ArrowUpDown,
   Eye,
   Filter,
+  Loader2,
   MoreHorizontal,
   Package,
   Pencil,
   Plus,
   Search,
-  SlidersHorizontal,
   Sparkles,
+  Tag,
   Trash2,
   Upload,
   X,
@@ -41,9 +43,17 @@ import {
   type ProductStatus,
 } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
+import {
+  bulkAssignCategoryAction,
+  bulkDeleteProductsAction,
+  bulkSetFeaturedAction,
+  bulkSetStatusAction,
+  bulkUnassignCategoryAction,
+} from "@/app/admin/(panel)/products/actions"
 
 type StatusFilter = ProductStatus | "all"
 type LeagueFilter = League | "all"
+type CategoryFilter = string // "__all__" or a category id
 
 export interface ProductsListClientProps {
   products: MockProduct[]
@@ -53,18 +63,57 @@ export interface ProductsListClientProps {
     draft: number
     outOfStock: number
   }
+  categories: Array<{ id: string; name: string; productCount: number }>
 }
 
-export function ProductsListClient({ products, counts }: ProductsListClientProps) {
+const CATEGORY_ALL = "__all__"
+
+export function ProductsListClient({
+  products,
+  counts,
+  categories,
+}: ProductsListClientProps) {
+  const router = useRouter()
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState<StatusFilter>("all")
   const [league, setLeague] = React.useState<LeagueFilter>("all")
+  const [category, setCategory] = React.useState<CategoryFilter>(CATEGORY_ALL)
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
+  const [bulkPending, setBulkPending] = React.useState(false)
+  const [bulkError, setBulkError] = React.useState<string | null>(null)
+  const searchRef = React.useRef<HTMLInputElement>(null)
+
+  // Press "/" anywhere to focus the search bar (skip when typing in another
+  // input — we don't want to steal focus from the form fields a user is in).
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "/") return
+      const t = e.target as HTMLElement | null
+      if (
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable)
+      ) {
+        return
+      }
+      e.preventDefault()
+      searchRef.current?.focus()
+      searchRef.current?.select()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   const filtered = React.useMemo(() => {
     return products.filter((p) => {
       if (status !== "all" && p.status !== status) return false
       if (league !== "all" && p.league !== league) return false
+      if (category === "__uncategorized__") {
+        if (p.categories.length > 0) return false
+      } else if (category !== CATEGORY_ALL && !p.categories.includes(category)) {
+        return false
+      }
       if (search) {
         const q = search.toLowerCase()
         const haystack = [
@@ -80,7 +129,7 @@ export function ProductsListClient({ products, counts }: ProductsListClientProps
       }
       return true
     })
-  }, [search, status, league])
+  }, [products, search, status, league, category])
 
   const stats = counts
 
@@ -100,12 +149,36 @@ export function ProductsListClient({ products, counts }: ProductsListClientProps
     }
   }
 
-  const hasFilters = status !== "all" || league !== "all" || search.length > 0
+  const hasFilters =
+    status !== "all" ||
+    league !== "all" ||
+    category !== CATEGORY_ALL ||
+    search.length > 0
   const clearFilters = () => {
     setSearch("")
     setStatus("all")
     setLeague("all")
+    setCategory(CATEGORY_ALL)
   }
+
+  // Wrap a bulk action with selection-clear + revalidation. The router.refresh
+  // is what re-runs the page's server queries so the table reflects the new
+  // state without a full reload.
+  async function runBulk<T>(
+    fn: () => Promise<{ ok: true; affected: number } | { ok: false; error: string }>,
+  ): Promise<void> {
+    setBulkPending(true)
+    setBulkError(null)
+    const result = await fn()
+    setBulkPending(false)
+    if (!result.ok) {
+      setBulkError(result.error)
+      return
+    }
+    setSelected(new Set())
+    router.refresh()
+  }
+  const selectedIds = React.useMemo(() => Array.from(selected), [selected])
 
   return (
     <div className="flex flex-col gap-5 p-4 md:gap-6 md:p-6">
@@ -165,13 +238,66 @@ export function ProductsListClient({ products, counts }: ProductsListClientProps
         />
       </div>
 
-      {/* Filters bar */}
+      {/* Category pills — same vibe as the storefront tabs */}
+      {categories.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCategory(CATEGORY_ALL)}
+            className={cn(
+              "rounded-full border px-4 py-1.5 text-sm font-semibold transition-all",
+              category === CATEGORY_ALL
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:border-primary/40",
+            )}
+          >
+            Todo
+            <span className="ml-2 text-xs font-normal opacity-70">
+              {products.length}
+            </span>
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCategory(c.id)}
+              className={cn(
+                "rounded-full border px-4 py-1.5 text-sm font-semibold transition-all",
+                category === c.id
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary/40",
+              )}
+            >
+              {c.name}
+              <span className="ml-2 text-xs font-normal opacity-70">
+                {c.productCount}
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setCategory("__uncategorized__")}
+            className={cn(
+              "rounded-full border-dashed border px-4 py-1.5 text-sm font-medium transition-all",
+              category === "__uncategorized__"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-muted-foreground/30 text-muted-foreground hover:border-primary/40",
+            )}
+            title="Productos sin ninguna categoría"
+          >
+            Sin categoría
+          </button>
+        </div>
+      )}
+
+      {/* Search + league filter */}
       <Card className="gap-0 rounded-xl border-border/70 bg-card p-3 shadow-card md:p-4">
         <CardContent className="flex flex-col gap-3 p-0 md:flex-row md:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre, equipo, jugador, tag..."
+              ref={searchRef}
+              placeholder='Buscar por nombre, equipo, jugador… (presiona "/" para enfocar)'
               className="h-10 pl-10"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -230,15 +356,6 @@ export function ProductsListClient({ products, counts }: ProductsListClientProps
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-10 gap-2 px-3"
-            >
-              <SlidersHorizontal className="size-4" />
-              <span className="hidden md:inline">Más filtros</span>
-            </Button>
-
             {hasFilters && (
               <Button
                 variant="ghost"
@@ -254,28 +371,115 @@ export function ProductsListClient({ products, counts }: ProductsListClientProps
         </CardContent>
       </Card>
 
-      {/* Bulk actions bar (animated in when something selected) */}
+      {/* Bulk actions bar — appears when at least one product is checked */}
       {selected.size > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+        <div className="sticky top-2 z-10 flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm shadow-md backdrop-blur md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-semibold tabular-nums">
-              {selected.size}
-            </span>{" "}
+            <span className="font-semibold tabular-nums">{selected.size}</span>{" "}
             <span className="text-muted-foreground">seleccionado(s)</span>
+            {bulkPending && (
+              <Loader2 className="ml-2 size-3.5 animate-spin text-muted-foreground" />
+            )}
+            {bulkError && (
+              <span className="ml-2 text-xs text-rose-600">{bulkError}</span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkPending || categories.length === 0}
+                  className="gap-1.5"
+                >
+                  <Tag className="size-3.5" /> Asignar categoría
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Añadir a categoría</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {categories.map((c) => (
+                  <DropdownMenuItem
+                    key={"add-" + c.id}
+                    onClick={() =>
+                      runBulk(() => bulkAssignCategoryAction(selectedIds, c.id))
+                    }
+                  >
+                    {c.name}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Quitar de categoría</DropdownMenuLabel>
+                {categories.map((c) => (
+                  <DropdownMenuItem
+                    key={"rm-" + c.id}
+                    onClick={() =>
+                      runBulk(() =>
+                        bulkUnassignCategoryAction(selectedIds, c.id),
+                      )
+                    }
+                  >
+                    Quitar de {c.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              className="gap-1.5"
+              onClick={() =>
+                runBulk(() => bulkSetStatusAction(selectedIds, "published"))
+              }
+            >
               <Eye className="size-3.5" /> Publicar
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              className="gap-1.5"
+              onClick={() =>
+                runBulk(() => bulkSetStatusAction(selectedIds, "archived"))
+              }
+            >
               <Archive className="size-3.5" /> Archivar
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              className="gap-1.5"
+              onClick={() =>
+                runBulk(() => bulkSetFeaturedAction(selectedIds, true))
+              }
+            >
+              <Sparkles className="size-3.5" /> Destacar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              className="gap-1.5 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `¿Eliminar ${selected.size} producto${selected.size === 1 ? "" : "s"}? Esta acción los marca como borrados pero se pueden restaurar manualmente.`,
+                  )
+                ) {
+                  runBulk(() => bulkDeleteProductsAction(selectedIds))
+                }
+              }}
+            >
               <Trash2 className="size-3.5" /> Eliminar
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              disabled={bulkPending}
               onClick={() => setSelected(new Set())}
             >
               Cancelar

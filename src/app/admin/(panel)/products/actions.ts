@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
 import { productCategories, products, variants } from "@/lib/db/schema"
@@ -233,4 +233,170 @@ export async function deleteProduct(
   revalidatePath("/admin/products")
   revalidatePath("/admin")
   redirect("/admin/products")
+}
+
+// ---------------------------------------------------------------------------
+// Bulk operations for the /admin/products list. These take an array of IDs so
+// the UI can offer "select N products → do X" in a single round-trip instead
+// of N requests. All require manager+; cost-bearing data isn't touched here.
+// ---------------------------------------------------------------------------
+
+import { inArray } from "drizzle-orm"
+
+export type BulkResult = { ok: true; affected: number } | { ok: false; error: string }
+
+/**
+ * Validate a freshly-received list of product IDs. Returns null if OK or an
+ * error message we can surface to the client.
+ */
+function validateIds(ids: string[]): string | null {
+  if (!Array.isArray(ids) || ids.length === 0) return "Lista vacía."
+  if (ids.length > 200) return "Demasiados productos en una operación."
+  if (ids.some((id) => typeof id !== "string" || !id.startsWith("prod_"))) {
+    return "IDs inválidos."
+  }
+  return null
+}
+
+/** Soft-delete N products in one shot. */
+export async function bulkDeleteProductsAction(
+  ids: string[],
+): Promise<BulkResult> {
+  await requireAdminRole("manager")
+  const err = validateIds(ids)
+  if (err) return { ok: false, error: err }
+  try {
+    const result = await db
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(inArray(products.id, ids))
+      .returning({ id: products.id })
+    revalidatePath("/admin/products")
+    revalidatePath("/admin")
+    revalidatePath("/")
+    return { ok: true, affected: result.length }
+  } catch {
+    return { ok: false, error: "No se pudo eliminar." }
+  }
+}
+
+/** Switch N products to the same status (e.g. publish all selected drafts). */
+export async function bulkSetStatusAction(
+  ids: string[],
+  status: ProductStatus,
+): Promise<BulkResult> {
+  await requireAdminRole("manager")
+  const err = validateIds(ids)
+  if (err) return { ok: false, error: err }
+  if (!["draft", "published", "archived"].includes(status)) {
+    return { ok: false, error: "Estado inválido." }
+  }
+  try {
+    const result = await db
+      .update(products)
+      .set({ status, updatedAt: new Date() })
+      .where(inArray(products.id, ids))
+      .returning({ id: products.id })
+    revalidatePath("/admin/products")
+    revalidatePath("/admin")
+    revalidatePath("/")
+    return { ok: true, affected: result.length }
+  } catch {
+    return { ok: false, error: "No se pudo actualizar el estado." }
+  }
+}
+
+/** Toggle "featured" for N products. */
+export async function bulkSetFeaturedAction(
+  ids: string[],
+  featured: boolean,
+): Promise<BulkResult> {
+  await requireAdminRole("manager")
+  const err = validateIds(ids)
+  if (err) return { ok: false, error: err }
+  try {
+    const result = await db
+      .update(products)
+      .set({ featured, updatedAt: new Date() })
+      .where(inArray(products.id, ids))
+      .returning({ id: products.id })
+    revalidatePath("/admin/products")
+    revalidatePath("/")
+    return { ok: true, affected: result.length }
+  } catch {
+    return { ok: false, error: "No se pudo actualizar." }
+  }
+}
+
+/**
+ * Add a category to N products. Skips pairs that already exist
+ * (ON CONFLICT DO NOTHING-equivalent via a fresh delete-then-insert is
+ * overkill; we just filter in JS for the small lists involved).
+ */
+export async function bulkAssignCategoryAction(
+  productIds: string[],
+  categoryId: string,
+): Promise<BulkResult> {
+  await requireAdminRole("manager")
+  const err = validateIds(productIds)
+  if (err) return { ok: false, error: err }
+  if (typeof categoryId !== "string" || !categoryId.startsWith("cat_")) {
+    return { ok: false, error: "Categoría inválida." }
+  }
+  try {
+    // Find which assignments already exist so we don't try to insert dupes
+    // (the M:N table has a composite PK and would error on duplicates).
+    const existing = await db
+      .select({ productId: productCategories.productId })
+      .from(productCategories)
+      .where(
+        and(
+          inArray(productCategories.productId, productIds),
+          eq(productCategories.categoryId, categoryId),
+        ),
+      )
+    const have = new Set(existing.map((e) => e.productId))
+    const missing = productIds.filter((id) => !have.has(id))
+    if (missing.length > 0) {
+      await db.insert(productCategories).values(
+        missing.map((productId) => ({ productId, categoryId })),
+      )
+    }
+    revalidatePath("/admin/products")
+    revalidatePath("/admin/categories")
+    revalidatePath("/")
+    return { ok: true, affected: missing.length }
+  } catch {
+    return { ok: false, error: "No se pudo asignar la categoría." }
+  }
+}
+
+/** Remove a category from N products. */
+export async function bulkUnassignCategoryAction(
+  productIds: string[],
+  categoryId: string,
+): Promise<BulkResult> {
+  await requireAdminRole("manager")
+  const err = validateIds(productIds)
+  if (err) return { ok: false, error: err }
+  if (typeof categoryId !== "string" || !categoryId.startsWith("cat_")) {
+    return { ok: false, error: "Categoría inválida." }
+  }
+  try {
+    const result = await db
+      .delete(productCategories)
+      .where(
+        and(
+          inArray(productCategories.productId, productIds),
+          eq(productCategories.categoryId, categoryId),
+        ),
+      )
+      .returning({ productId: productCategories.productId })
+    revalidatePath("/admin/products")
+    revalidatePath("/admin/categories")
+    revalidatePath("/")
+    return { ok: true, affected: result.length }
+  } catch {
+    return { ok: false, error: "No se pudo quitar la categoría." }
+  }
 }
