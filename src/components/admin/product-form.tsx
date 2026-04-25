@@ -56,6 +56,11 @@ interface ProductFormProps {
    * managers see margin info; staff and viewers don't.
    */
   canSeeCost?: boolean
+  /**
+   * All categories the product can be assigned to. Read at the page
+   * level once; the form just renders the multi-select.
+   */
+  availableCategories?: { id: string; name: string }[]
 }
 
 function slugify(s: string) {
@@ -72,6 +77,7 @@ export function ProductForm({
   product,
   mode,
   canSeeCost = false,
+  availableCategories = [],
 }: ProductFormProps) {
   const router = useRouter()
   const [saving, setSaving] = React.useState(false)
@@ -113,6 +119,9 @@ export function ProductForm({
   const [seoDescription, setSeoDescription] = React.useState("")
   const [tags, setTags] = React.useState<string[]>(product?.tags ?? [])
   const [tagInput, setTagInput] = React.useState("")
+  const [categoryIds, setCategoryIds] = React.useState<string[]>(
+    product?.categories ?? [],
+  )
 
   const [images, setImages] = React.useState<UploadedImage[]>([])
 
@@ -171,6 +180,7 @@ export function ProductForm({
         sku: v.sku,
         price: v.price,
       })),
+      categoryIds,
     }
 
     const result =
@@ -608,6 +618,59 @@ export function ProductForm({
                     </span>
                   </span>
                 )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Categories */}
+          <Card className="rounded-xl border-border/70 shadow-card">
+            <CardHeader>
+              <CardTitle className="text-base">Categorías</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {availableCategories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No hay categorías creadas todavía. Ve a{" "}
+                  <a
+                    href="/admin/categories"
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Categorías
+                  </a>{" "}
+                  para crear la primera.
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Marca todas las categorías a las que pertenece este producto.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableCategories.map((c) => {
+                      const selected = categoryIds.includes(c.id)
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() =>
+                            setCategoryIds((prev) =>
+                              selected
+                                ? prev.filter((id) => id !== c.id)
+                                : [...prev, c.id],
+                            )
+                          }
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs font-semibold transition-all",
+                            selected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-foreground hover:border-primary/40",
+                          )}
+                        >
+                          {c.name}
+                        </button>
+                      )
+                    })}
                   </div>
                 </>
               )}

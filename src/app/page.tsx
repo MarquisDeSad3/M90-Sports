@@ -9,7 +9,10 @@ import { FooterCta } from "@/components/footer-cta"
 import { WhatsappFloat } from "@/components/whatsapp-float"
 import { Nav } from "@/components/nav"
 import { StoreSection } from "@/components/public/store-section"
-import { getPublicProducts } from "@/lib/queries/public-products"
+import {
+  getPublicCategories,
+  getPublicProducts,
+} from "@/lib/queries/public-products"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -21,7 +24,10 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  const products = await getPublicProducts()
+  const [products, categories] = await Promise.all([
+    getPublicProducts(),
+    getPublicCategories(),
+  ])
 
   return (
     <>
@@ -29,7 +35,7 @@ export default async function HomePage() {
       <main>
         <Hero />
         <Categories />
-        <StoreSection products={products} />
+        <StoreSection products={products} categories={categories} />
         <HowToBuy />
         <Shipping />
         <Testimonials />

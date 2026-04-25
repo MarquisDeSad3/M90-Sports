@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import { eq } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
-import { products, variants } from "@/lib/db/schema"
+import { productCategories, products, variants } from "@/lib/db/schema"
 import { requireAdminRole } from "@/lib/auth"
 import type {
   League,
@@ -39,6 +39,8 @@ export interface ProductInput {
   isPreorder: boolean
   preorderReleaseDate?: string
   variants: VariantInput[]
+  /** IDs of categories the product belongs to (M:N). Empty = uncategorized. */
+  categoryIds?: string[]
 }
 
 export type ActionResult<T = unknown> =
@@ -111,6 +113,15 @@ export async function createProduct(
           }))
         )
       }
+
+      if (input.categoryIds && input.categoryIds.length > 0) {
+        await tx.insert(productCategories).values(
+          input.categoryIds.map((categoryId) => ({
+            productId,
+            categoryId,
+          })),
+        )
+      }
     })
   } catch (err) {
     const msg = (err as Error).message ?? String(err)
@@ -173,6 +184,21 @@ export async function updateProduct(
             price: v.price ? String(v.price) : null,
             position: idx,
           }))
+        )
+      }
+
+      // Replace category assignments. Cheaper than diffing for the
+      // small lists involved (typically 0-3 categories per product).
+      await tx
+        .delete(productCategories)
+        .where(eq(productCategories.productId, id))
+
+      if (input.categoryIds && input.categoryIds.length > 0) {
+        await tx.insert(productCategories).values(
+          input.categoryIds.map((categoryId) => ({
+            productId: id,
+            categoryId,
+          })),
         )
       }
     })

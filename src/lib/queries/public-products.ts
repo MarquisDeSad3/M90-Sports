@@ -1,7 +1,13 @@
 import "server-only"
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { productImages, products, variants } from "@/lib/db/schema"
+import {
+  categories,
+  productCategories,
+  productImages,
+  products,
+  variants,
+} from "@/lib/db/schema"
 import type {
   League,
   ProductStatus,
@@ -36,6 +42,37 @@ export interface PublicProduct {
   preorderReleaseDate: string | null
   variants: PublicVariant[]
   totalStock: number
+  categoryIds: string[]
+}
+
+export interface PublicCategory {
+  id: string
+  slug: string
+  name: string
+  position: number
+}
+
+/** Visible categories ordered for the storefront tabs. */
+export async function getPublicCategories(): Promise<PublicCategory[]> {
+  try {
+    const rows = await db
+      .select({
+        id: categories.id,
+        slug: categories.slug,
+        name: categories.name,
+        position: categories.position,
+      })
+      .from(categories)
+      .where(eq(categories.visible, true))
+      .orderBy(asc(categories.position), asc(categories.name))
+    return rows
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[public-categories] DB unavailable in dev:", err)
+      return []
+    }
+    throw err
+  }
 }
 
 export async function getPublicProducts(): Promise<PublicProduct[]> {
@@ -67,7 +104,7 @@ export async function getPublicProducts(): Promise<PublicProduct[]> {
 
   const ids = rows.map((r) => r.id)
 
-  const [allVariants, allPrimaryImages] = await Promise.all([
+  const [allVariants, allPrimaryImages, allProductCategories] = await Promise.all([
     db.select().from(variants).where(inArray(variants.productId, ids)),
     db
       .select()
@@ -78,6 +115,13 @@ export async function getPublicProducts(): Promise<PublicProduct[]> {
           eq(productImages.isPrimary, true)
         )
       ),
+    db
+      .select({
+        productId: productCategories.productId,
+        categoryId: productCategories.categoryId,
+      })
+      .from(productCategories)
+      .where(inArray(productCategories.productId, ids)),
   ])
 
   const variantsMap = new Map<string, typeof allVariants>()
@@ -89,6 +133,12 @@ export async function getPublicProducts(): Promise<PublicProduct[]> {
   const imagesMap = new Map<string, string>()
   for (const img of allPrimaryImages) {
     imagesMap.set(img.productId, img.url)
+  }
+  const categoryIdsMap = new Map<string, string[]>()
+  for (const pc of allProductCategories) {
+    const list = categoryIdsMap.get(pc.productId) ?? []
+    list.push(pc.categoryId)
+    categoryIdsMap.set(pc.productId, list)
   }
 
   return rows.map((r): PublicProduct => {
@@ -118,6 +168,7 @@ export async function getPublicProducts(): Promise<PublicProduct[]> {
         price: Number(v.price ?? r.basePrice),
       })),
       totalStock: vs.reduce((s, v) => s + v.stock, 0),
+      categoryIds: categoryIdsMap.get(r.id) ?? [],
     }
   })
 }
@@ -140,7 +191,7 @@ export async function getPublicProduct(
   const product = rows[0]
   if (!product) return null
 
-  const [productVariants, primaryImg] = await Promise.all([
+  const [productVariants, primaryImg, productCats] = await Promise.all([
     db.select().from(variants).where(eq(variants.productId, product.id)),
     db
       .select({ url: productImages.url })
@@ -152,6 +203,10 @@ export async function getPublicProduct(
         )
       )
       .limit(1),
+    db
+      .select({ categoryId: productCategories.categoryId })
+      .from(productCategories)
+      .where(eq(productCategories.productId, product.id)),
   ])
 
   return {
@@ -179,5 +234,6 @@ export async function getPublicProduct(
       price: Number(v.price ?? product.basePrice),
     })),
     totalStock: productVariants.reduce((s, v) => s + v.stock, 0),
+    categoryIds: productCats.map((c) => c.categoryId),
   }
 }

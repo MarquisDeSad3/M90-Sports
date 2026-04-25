@@ -2,6 +2,7 @@ import "server-only"
 import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import {
+  productCategories,
   productImages,
   products,
   variants,
@@ -124,6 +125,21 @@ export async function getProducts(
     imageByProduct.set(img.productId, img.url)
   }
 
+  // Categories assigned to each product (M:N via product_categories).
+  const allProductCats = await db
+    .select({
+      productId: productCategories.productId,
+      categoryId: productCategories.categoryId,
+    })
+    .from(productCategories)
+    .where(or(...ids.map((id) => eq(productCategories.productId, id)))!)
+  const categoryIdsByProduct = new Map<string, string[]>()
+  for (const pc of allProductCats) {
+    const list = categoryIdsByProduct.get(pc.productId) ?? []
+    list.push(pc.categoryId)
+    categoryIdsByProduct.set(pc.productId, list)
+  }
+
   return rows.map((r): MockProduct => ({
     id: r.id,
     slug: r.slug,
@@ -149,7 +165,7 @@ export async function getProducts(
         sku: v.sku,
         price: v.price ? Number(v.price) : undefined,
       })) ?? [],
-    categories: [],
+    categories: categoryIdsByProduct.get(r.id) ?? [],
     tags: [],
     featured: r.featured,
     isPreorder: r.isPreorder,
@@ -189,6 +205,11 @@ export async function getProduct(idOrSlug: string): Promise<MockProduct | null> 
     )
     .limit(1)
 
+  const productCats = await db
+    .select({ categoryId: productCategories.categoryId })
+    .from(productCategories)
+    .where(eq(productCategories.productId, product.id))
+
   return {
     id: product.id,
     slug: product.slug,
@@ -213,7 +234,7 @@ export async function getProduct(idOrSlug: string): Promise<MockProduct | null> 
       sku: v.sku,
       price: v.price ? Number(v.price) : undefined,
     })),
-    categories: [],
+    categories: productCats.map((c) => c.categoryId),
     tags: [],
     featured: product.featured,
     isPreorder: product.isPreorder,
