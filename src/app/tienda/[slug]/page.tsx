@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Sparkles, Truck } from "lucide-react"
-import { StorefrontHeader } from "@/components/public/storefront-header"
+import { Nav } from "@/components/nav"
 import { ProductImage } from "@/components/admin/product-image"
 import { AddToCartForm } from "@/components/public/add-to-cart-form"
 import { getPublicProduct } from "@/lib/queries/public-products"
@@ -30,9 +30,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   return (
     <main className="relative min-h-svh bg-[#f7ebc8]" style={{ color: M90_NAVY }}>
-      <StorefrontHeader />
+      <Nav />
 
-      <div className="mx-auto max-w-6xl px-5 py-6 md:px-8 md:py-10">
+      <div className="mx-auto max-w-6xl px-5 pt-28 pb-2 md:px-8 md:pt-32">
         <Link
           href="/tienda"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#011b53]/75 transition-colors hover:text-[#011b53]"

@@ -9,11 +9,11 @@ import { useCart } from "@/lib/cart/use-cart";
 import { CartDrawer } from "@/components/public/cart-drawer";
 
 const LINKS = [
-  { href: "#catalogo", label: "Catálogo", num: "01" },
-  { href: "#categorias", label: "Categorías", num: "02" },
-  { href: "#como-comprar", label: "Cómo comprar", num: "03" },
-  { href: "#envios", label: "Envíos", num: "04" },
-  { href: "#faq", label: "FAQ", num: "05" },
+  { href: "/#catalogo", label: "Catálogo", num: "01" },
+  { href: "/#categorias", label: "Categorías", num: "02" },
+  { href: "/#como-comprar", label: "Cómo comprar", num: "03" },
+  { href: "/#envios", label: "Envíos", num: "04" },
+  { href: "/#faq", label: "FAQ", num: "05" },
 ];
 
 export function Nav() {
@@ -66,7 +66,7 @@ export function Nav() {
             )}
           >
             {/* Logo block */}
-            <a href="#top" className="group flex items-center gap-3">
+            <a href="/" className="group flex items-center gap-3">
               <motion.div
                 whileHover={{ rotate: -6, scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 400, damping: 18 }}

@@ -6,11 +6,10 @@ import { useRouter } from "next/navigation"
 import {
   AlertCircle,
   ArrowLeft,
-  CheckCircle2,
   Loader2,
   MessageCircle,
 } from "lucide-react"
-import { StorefrontHeader } from "@/components/public/storefront-header"
+import { Nav } from "@/components/nav"
 import { useCart } from "@/lib/cart/use-cart"
 import { cn } from "@/lib/utils"
 
@@ -81,7 +80,7 @@ export default function CheckoutPage() {
 
   React.useEffect(() => {
     if (hydrated && items.length === 0 && !submitting) {
-      router.replace("/carrito")
+      router.replace("/")
     }
   }, [hydrated, items.length, router, submitting])
 
@@ -157,7 +156,7 @@ export default function CheckoutPage() {
   if (!hydrated) {
     return (
       <main className="min-h-svh bg-[#f7ebc8]">
-        <StorefrontHeader />
+        <Nav />
       </main>
     )
   }
@@ -167,15 +166,15 @@ export default function CheckoutPage() {
       className="relative min-h-svh bg-[#f7ebc8]"
       style={{ color: M90_NAVY }}
     >
-      <StorefrontHeader />
+      <Nav />
 
-      <div className="mx-auto max-w-2xl px-5 py-6 md:px-8">
+      <div className="mx-auto max-w-2xl px-5 pt-28 pb-2 md:px-8 md:pt-32">
         <Link
-          href="/carrito"
+          href="/"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#011b53]/75 transition-colors hover:text-[#011b53]"
         >
           <ArrowLeft className="size-4" />
-          Volver al carrito
+          Volver a la tienda
         </Link>
       </div>
 
