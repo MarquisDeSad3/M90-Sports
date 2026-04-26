@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Check, ShoppingBag, Sparkles } from "lucide-react"
+import { Check, MessageCircle, ShoppingBag, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCart, type CartItem } from "@/lib/cart/use-cart"
 import { ProductImage } from "@/components/admin/product-image"
@@ -54,6 +54,9 @@ export function ProductCardCart({ product }: { product: PublicProduct }) {
   const kicker = detectKicker(product)
   const hasDiscount =
     product.compareAtPrice && product.compareAtPrice > product.basePrice
+  // Preorder products that haven't been priced yet (basePrice === 0) skip
+  // the cart entirely and route the customer to a WhatsApp quote request.
+  const needsQuote = product.isPreorder && product.basePrice === 0
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -138,18 +141,27 @@ export function ProductCardCart({ product }: { product: PublicProduct }) {
       </Link>
 
       <div className="flex items-baseline gap-2 px-1">
-        <span className="font-display text-2xl tabular-nums text-[#011b53]">
-          ${product.basePrice.toFixed(0)}
-        </span>
-        {hasDiscount && (
-          <span className="text-sm text-[#011b53]/50 line-through tabular-nums">
-            ${product.compareAtPrice!.toFixed(0)}
+        {needsQuote ? (
+          <span className="text-sm font-semibold uppercase tracking-wider text-[#980e21]">
+            Por encargo
           </span>
+        ) : (
+          <>
+            <span className="font-display text-2xl tabular-nums text-[#011b53]">
+              ${product.basePrice.toFixed(0)}
+            </span>
+            {hasDiscount && (
+              <span className="text-sm text-[#011b53]/50 line-through tabular-nums">
+                ${product.compareAtPrice!.toFixed(0)}
+              </span>
+            )}
+          </>
         )}
       </div>
 
-      {/* Sizes inline */}
-      {product.variants.length > 0 && (
+      {/* Sizes inline (hidden for products that need a quote — sizes get
+          discussed by WhatsApp anyway). */}
+      {!needsQuote && product.variants.length > 0 && (
         <div className="flex flex-wrap gap-1 px-1">
           {product.variants.map((v) => {
             const out = !product.isPreorder && v.stock === 0
@@ -184,33 +196,48 @@ export function ProductCardCart({ product }: { product: PublicProduct }) {
       )}
 
       {/* CTA */}
-      <button
-        type="button"
-        disabled={!canBuy || justAdded}
-        onClick={handleAdd}
-        className={cn(
-          "group/btn mt-1 inline-flex h-10 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-all",
-          canBuy &&
-            !justAdded &&
-            "bg-[#011b53] text-[#efd9a3] hover:-translate-y-0.5 hover:bg-[#0a2a75]",
-          justAdded && "bg-emerald-600 text-white",
-          !canBuy && "cursor-not-allowed bg-[rgba(1,27,83,0.15)] text-white"
-        )}
-      >
-        {justAdded ? (
-          <>
-            <Check className="size-3.5" />
-            Añadido
-          </>
-        ) : !canBuy ? (
-          "Agotado"
-        ) : (
-          <>
-            <ShoppingBag className="size-3.5" />
-            Agregar
-          </>
-        )}
-      </button>
+      {needsQuote ? (
+        <a
+          href={`https://wa.me/5351191461?text=${encodeURIComponent(
+            `Hola M90, me interesa este producto: ${product.name}.\n\n¿Cuánto cuesta y cuándo llega?`,
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-1 inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#25D366] text-xs font-semibold text-white transition-all hover:-translate-y-0.5 hover:brightness-95"
+        >
+          <MessageCircle className="size-3.5" />
+          Consultar por WhatsApp
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled={!canBuy || justAdded}
+          onClick={handleAdd}
+          className={cn(
+            "group/btn mt-1 inline-flex h-10 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-all",
+            canBuy &&
+              !justAdded &&
+              "bg-[#011b53] text-[#efd9a3] hover:-translate-y-0.5 hover:bg-[#0a2a75]",
+            justAdded && "bg-emerald-600 text-white",
+            !canBuy && "cursor-not-allowed bg-[rgba(1,27,83,0.15)] text-white",
+          )}
+        >
+          {justAdded ? (
+            <>
+              <Check className="size-3.5" />
+              Añadido
+            </>
+          ) : !canBuy ? (
+            "Agotado"
+          ) : (
+            <>
+              <ShoppingBag className="size-3.5" />
+              Agregar
+            </>
+          )}
+        </button>
+      )}
     </article>
   )
 }

@@ -100,36 +100,12 @@ export function PreordersView({ sections, totalProducts }: PreordersViewProps) {
         if (section.products.length === 0) return null
         const isCollapsed = collapsed.has(section.id)
         return (
-          <section key={section.id} className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => toggle(section.id)}
-              className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-4 py-2.5 text-left transition-colors hover:bg-muted/60"
-              aria-expanded={!isCollapsed}
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-primary" />
-                <h3 className="text-sm font-semibold">{section.name}</h3>
-                <Badge variant="secondary" className="tabular-nums">
-                  {section.products.length}
-                </Badge>
-              </div>
-              <ChevronDown
-                className={cn(
-                  "size-4 text-muted-foreground transition-transform",
-                  isCollapsed ? "" : "rotate-180",
-                )}
-              />
-            </button>
-
-            {!isCollapsed && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                {section.products.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-            )}
-          </section>
+          <SectionBlock
+            key={section.id}
+            section={section}
+            collapsed={isCollapsed}
+            onToggle={() => toggle(section.id)}
+          />
         )
       })}
 
@@ -143,6 +119,134 @@ export function PreordersView({ sections, totalProducts }: PreordersViewProps) {
           </CardContent>
         </Card>
       )}
+    </div>
+  )
+}
+
+/**
+ * One collapsible category block. Paginates its own product list
+ * (12/page) so a section with 200+ items doesn't dump everything at
+ * once. The toggle reveals the grid; pagination state survives the
+ * collapse so reopening shows the same page the user left.
+ */
+function SectionBlock({
+  section,
+  collapsed,
+  onToggle,
+}: {
+  section: Section
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  const PAGE_SIZE = 12
+  const [page, setPage] = React.useState(1)
+  const totalPages = Math.max(1, Math.ceil(section.products.length / PAGE_SIZE))
+  const current = Math.min(page, totalPages)
+  const start = (current - 1) * PAGE_SIZE
+  const items = section.products.slice(start, start + PAGE_SIZE)
+
+  // If the products list shrinks (search filter), snap back to page 1.
+  React.useEffect(() => {
+    setPage(1)
+  }, [section.products.length])
+
+  return (
+    <section className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-4 py-2.5 text-left transition-colors hover:bg-muted/60"
+        aria-expanded={!collapsed}
+      >
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+          <h3 className="text-sm font-semibold">{section.name}</h3>
+          <Badge variant="secondary" className="tabular-nums">
+            {section.products.length}
+          </Badge>
+        </div>
+        <ChevronDown
+          className={cn(
+            "size-4 text-muted-foreground transition-transform",
+            collapsed ? "" : "rotate-180",
+          )}
+        />
+      </button>
+
+      {!collapsed && (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {items.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+          {section.products.length > PAGE_SIZE && (
+            <SectionPager
+              page={current}
+              totalPages={totalPages}
+              onChange={setPage}
+              from={start + 1}
+              to={Math.min(start + PAGE_SIZE, section.products.length)}
+              total={section.products.length}
+            />
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+function SectionPager({
+  page,
+  totalPages,
+  onChange,
+  from,
+  to,
+  total,
+}: {
+  page: number
+  totalPages: number
+  onChange: (p: number) => void
+  from: number
+  to: number
+  total: number
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span className="tabular-nums">
+        {from}–{to} de {total}
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+          className={cn(
+            "rounded border px-2.5 py-1 transition-colors",
+            page <= 1
+              ? "cursor-not-allowed border-border/40 text-muted-foreground/50"
+              : "border-border hover:bg-accent",
+          )}
+        >
+          ‹
+        </button>
+        <span className="px-2 tabular-nums">
+          {page} / {totalPages}
+        </span>
+        <button
+          type="button"
+          disabled={page >= totalPages}
+          onClick={() => onChange(page + 1)}
+          className={cn(
+            "rounded border px-2.5 py-1 transition-colors",
+            page >= totalPages
+              ? "cursor-not-allowed border-border/40 text-muted-foreground/50"
+              : "border-border hover:bg-accent",
+          )}
+        >
+          ›
+        </button>
+      </div>
     </div>
   )
 }

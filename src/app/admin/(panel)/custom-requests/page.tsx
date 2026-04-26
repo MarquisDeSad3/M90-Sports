@@ -1,18 +1,38 @@
-import { Sparkles } from "lucide-react"
-import { PageStub } from "@/components/admin/page-stub"
+import { redirect } from "next/navigation"
+import { requireAdmin } from "@/lib/auth"
+import { isAtLeastStaff } from "@/lib/auth/roles"
+import {
+  getCustomRequests,
+  getCustomRequestCounts,
+} from "@/lib/queries/custom-requests"
+import { CustomRequestsClient } from "./client"
 
-export default function CustomRequestsPage() {
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+export default async function CustomRequestsPage() {
+  const acting = await requireAdmin()
+  if (!isAtLeastStaff(acting.admin.role)) {
+    redirect("/admin")
+  }
+
+  const [items, counts] = await Promise.all([
+    getCustomRequests(),
+    getCustomRequestCounts(),
+  ])
+
   return (
-    <PageStub
-      title="Pedidos a medida"
-      description="Solicitudes especiales de clientes que quieren un jersey que no está en el catálogo."
-      icon={Sparkles}
-      todo={[
-        "Ver solicitudes pendientes con foto/link de referencia",
-        "Cotizar precio y responder al cliente",
-        "Convertir solicitud aceptada en pedido normal",
-        "Histórico de solicitudes (aceptadas, rechazadas, convertidas)",
-      ]}
-    />
+    <div className="flex flex-col gap-5 p-4 md:gap-6 md:p-6">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
+          Pedidos a medida
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Solicitudes de cotización. Revisa, pon precio y responde por WhatsApp.
+        </p>
+      </div>
+
+      <CustomRequestsClient initial={items} counts={counts} />
+    </div>
   )
 }
