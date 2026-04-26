@@ -4,9 +4,10 @@ import { getCategories } from "@/lib/queries/categories"
 
 export default async function ProductsPage() {
   const [products, counts, categories] = await Promise.all([
-    // 1000 covers the current catalog comfortably. If we ever cross
-    // that, swap to real pagination in the client.
-    getProducts({ limit: 1000 }),
+    // We paginate client-side at 50/page, so we still need every row
+    // up front. 2000 is plenty for the current catalog (~1300 items)
+    // with margin. If we ever cross 2000, move pagination to the server.
+    getProducts({ limit: 2000 }),
     getProductCounts(),
     getCategories(),
   ])

@@ -81,6 +81,8 @@ export function ProductsListClient({
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
   const [bulkPending, setBulkPending] = React.useState(false)
   const [bulkError, setBulkError] = React.useState<string | null>(null)
+  const [page, setPage] = React.useState(1)
+  const PAGE_SIZE = 50
   const searchRef = React.useRef<HTMLInputElement>(null)
 
   // Press "/" anywhere to focus the search bar (skip when typing in another
@@ -160,6 +162,18 @@ export function ProductsListClient({
     setLeague("all")
     setCategory(CATEGORY_ALL)
   }
+
+  // Reset to first page whenever the filter set narrows or widens — the
+  // current page may not exist in the new result set.
+  React.useEffect(() => {
+    setPage(1)
+  }, [search, status, league, category])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const pageStart = (currentPage - 1) * PAGE_SIZE
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, filtered.length)
+  const pageItems = filtered.slice(pageStart, pageEnd)
 
   // Wrap a bulk action with selection-clear + revalidation. The router.refresh
   // is what re-runs the page's server queries so the table reflects the new
@@ -547,7 +561,7 @@ export function ProductsListClient({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map((product) => {
+              {pageItems.map((product) => {
                 const total = getProductTotalStock(product)
                 const isSelected = selected.has(product.id)
                 return (
@@ -685,7 +699,7 @@ export function ProductsListClient({
       {/* Mobile cards */}
       {filtered.length > 0 && (
         <div className="flex flex-col gap-3 md:hidden">
-          {filtered.map((product) => {
+          {pageItems.map((product) => {
             const total = getProductTotalStock(product)
             return (
               <Link
@@ -748,20 +762,151 @@ export function ProductsListClient({
         </div>
       )}
 
+      {/* Pagination */}
+      {filtered.length > PAGE_SIZE && (
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          onChange={(p) => {
+            setPage(p)
+            // Smoothly scroll to the top of the list when paging.
+            window.scrollTo({ top: 0, behavior: "smooth" })
+          }}
+        />
+      )}
+
       {/* Footer count */}
       {filtered.length > 0 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             Mostrando{" "}
             <span className="font-semibold text-foreground tabular-nums">
-              {filtered.length}
+              {pageStart + 1}
+            </span>
+            {"–"}
+            <span className="font-semibold text-foreground tabular-nums">
+              {pageEnd}
             </span>{" "}
             de{" "}
-            <span className="tabular-nums">{counts.total}</span> productos
+            <span className="tabular-nums">{filtered.length}</span> productos
+            {filtered.length !== counts.total && (
+              <>
+                {" "}(filtrados de{" "}
+                <span className="tabular-nums">{counts.total}</span>)
+              </>
+            )}
           </span>
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Pagination strip — first / prev / page-numbers / next / last.
+ *
+ * The page-number list shows up to 7 buttons, always with the first
+ * and last page visible plus ellipsis around a window centered on the
+ * current page. Reads at-a-glance even with hundreds of pages.
+ */
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number
+  totalPages: number
+  onChange: (p: number) => void
+}) {
+  const numbers = React.useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+    const out: (number | "ellipsis")[] = [1]
+    const left = Math.max(2, page - 2)
+    const right = Math.min(totalPages - 1, page + 2)
+    if (left > 2) out.push("ellipsis")
+    for (let i = left; i <= right; i++) out.push(i)
+    if (right < totalPages - 1) out.push("ellipsis")
+    out.push(totalPages)
+    return out
+  }, [page, totalPages])
+
+  const isFirst = page <= 1
+  const isLast = page >= totalPages
+
+  return (
+    <nav
+      aria-label="Paginación"
+      className="flex flex-wrap items-center justify-center gap-1.5 pt-2 md:gap-2"
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-9 px-2.5"
+        disabled={isFirst}
+        onClick={() => onChange(1)}
+        aria-label="Primera página"
+      >
+        «
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-9 px-2.5"
+        disabled={isFirst}
+        onClick={() => onChange(page - 1)}
+        aria-label="Anterior"
+      >
+        ‹
+      </Button>
+      {numbers.map((n, idx) =>
+        n === "ellipsis" ? (
+          <span
+            key={"e" + idx}
+            className="px-1 text-sm text-muted-foreground select-none"
+          >
+            …
+          </span>
+        ) : (
+          <Button
+            key={n}
+            type="button"
+            variant={n === page ? "default" : "outline"}
+            size="sm"
+            className="h-9 min-w-9 px-2.5 tabular-nums"
+            onClick={() => onChange(n)}
+            aria-current={n === page ? "page" : undefined}
+          >
+            {n}
+          </Button>
+        ),
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-9 px-2.5"
+        disabled={isLast}
+        onClick={() => onChange(page + 1)}
+        aria-label="Siguiente"
+      >
+        ›
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-9 px-2.5"
+        disabled={isLast}
+        onClick={() => onChange(totalPages)}
+        aria-label="Última página"
+      >
+        »
+      </Button>
+    </nav>
   )
 }
 
