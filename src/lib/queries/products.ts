@@ -21,6 +21,7 @@ export interface ProductFilters {
   search?: string
   limit?: number
   offset?: number
+  isPreorder?: boolean
 }
 
 /**
@@ -49,6 +50,9 @@ export async function getProducts(
         ilike(products.slug, q)
       )!
     )
+  }
+  if (filters.isPreorder !== undefined) {
+    conditions.push(eq(products.isPreorder, filters.isPreorder))
   }
 
   const where = and(...conditions)
@@ -254,7 +258,13 @@ export interface ProductCounts {
   outOfStock: number
 }
 
-export async function getProductCounts(): Promise<ProductCounts> {
+export async function getProductCounts(opts?: { isPreorder?: boolean }): Promise<ProductCounts> {
+  const conditions = [isNull(products.deletedAt)]
+  if (opts?.isPreorder !== undefined) {
+    conditions.push(eq(products.isPreorder, opts.isPreorder))
+  }
+  const where = and(...conditions)
+
   const result = await db
     .select({
       total: sql<number>`count(*)::int`,
@@ -263,13 +273,20 @@ export async function getProductCounts(): Promise<ProductCounts> {
       archived: sql<number>`count(*) filter (where ${products.status} = 'archived')::int`,
     })
     .from(products)
-    .where(isNull(products.deletedAt))
+    .where(where)
 
-  // Out of stock: products whose total variant stock = 0
+  const preorderFilter =
+    opts?.isPreorder === undefined
+      ? sql``
+      : opts.isPreorder
+        ? sql`AND p.is_preorder = true`
+        : sql`AND p.is_preorder = false`
+
   const outOfStockResult = await db.execute(sql`
     SELECT COUNT(*)::int AS count
     FROM ${products} p
     WHERE p.deleted_at IS NULL
+      ${preorderFilter}
       AND COALESCE((
         SELECT SUM(v.stock)
         FROM ${variants} v
