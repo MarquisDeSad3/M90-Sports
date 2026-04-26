@@ -448,6 +448,18 @@ export const orders = pgTable(
     notesInternal: text("notes_internal"),
     couponCode: text("coupon_code"),
 
+    // Preorder accounting. When the cart has any isPreorder=true item,
+    // the customer pays a deposit upfront and the balance on arrival.
+    // For pure in-stock orders both stay null and the existing total is
+    // what the customer pays once.
+    depositAmount: numeric("deposit_amount", { precision: 10, scale: 2 }),
+    balanceAmount: numeric("balance_amount", { precision: 10, scale: 2 }),
+    depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
+    balancePaidAt: timestamp("balance_paid_at", { withTimezone: true }),
+    /** Tracks Ever's side of the preorder: not_started | sourcing | in_transit | arrived. */
+    sourcingStatus: text("sourcing_status"),
+    arrivedAtStockAt: timestamp("arrived_at_stock_at", { withTimezone: true }),
+
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     shippedAt: timestamp("shipped_at", { withTimezone: true }),

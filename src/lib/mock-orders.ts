@@ -99,6 +99,14 @@ export interface MockOrder {
     | "shipped"
     | "delivered"
     | "returned"
+  /** Preorder split. Both null on pure in-stock orders. */
+  depositAmount?: number | null
+  balanceAmount?: number | null
+  depositPaidAt?: string | null
+  balancePaidAt?: string | null
+  /** sourcing_status from the schema: not_started | sourcing | in_transit | arrived. */
+  sourcingStatus?: string | null
+  arrivedAtStockAt?: string | null
 
   notesCustomer?: string
   notesInternal?: string

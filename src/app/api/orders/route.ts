@@ -18,6 +18,13 @@ import {
   pruneRateLimits,
 } from "@/lib/security/rate-limit"
 import { getClientIp, looksLikeBrowser } from "@/lib/security/get-ip"
+import { getSettingValues } from "@/lib/queries/settings"
+
+/** Clamp a percentage value into 0..100 — defensive against bad config. */
+function clampPct(n: number): number {
+  if (!Number.isFinite(n)) return 30
+  return Math.max(0, Math.min(100, n))
+}
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -70,6 +77,8 @@ function buildWhatsAppMessage(opts: {
   orderNumber: string
   items: { name: string; size: string; quantity: number; subtotal: number }[]
   total: number
+  depositAmount: number | null
+  balanceAmount: number | null
   customerName: string
   shippingSummary: string
   paymentMethod: string
@@ -86,16 +95,28 @@ function buildWhatsAppMessage(opts: {
     zelle: "Zelle",
     paypal: "PayPal",
   }
-  return [
+  const lines = [
     `Hola M90, soy ${opts.customerName}.`,
     `Pedido ${opts.orderNumber}:`,
     "",
     itemsLines,
     "",
-    `Total: $${opts.total.toFixed(0)}`,
+  ]
+  if (opts.depositAmount !== null && opts.balanceAmount !== null) {
+    lines.push(
+      `Total: $${opts.total.toFixed(0)}`,
+      `→ A pagar ahora: $${opts.depositAmount.toFixed(0)}`,
+      `→ A pagar al recibir: $${opts.balanceAmount.toFixed(0)}`,
+      "(pedido por encargo — entre 15 y 25 días)",
+    )
+  } else {
+    lines.push(`Total: $${opts.total.toFixed(0)}`)
+  }
+  lines.push(
     `Pago: ${paymentLabel[opts.paymentMethod] ?? opts.paymentMethod}`,
     `Dirección: ${opts.shippingSummary}`,
-  ].join("\n")
+  )
+  return lines.join("\n")
 }
 
 export async function POST(request: Request) {
@@ -200,6 +221,7 @@ export async function POST(request: Request) {
       productTeam: products.team,
       basePrice: products.basePrice,
       productStatus: products.status,
+      productIsPreorder: products.isPreorder,
     })
     .from(variants)
     .innerJoin(products, eq(products.id, variants.productId))
@@ -225,6 +247,7 @@ export async function POST(request: Request) {
       sku: v.sku,
       quantity: Math.max(1, Math.min(20, Math.floor(it.quantity || 1))),
       unitPrice,
+      isPreorder: v.productIsPreorder,
     }
   })
   const subtotal = snapshots.reduce(
@@ -239,6 +262,31 @@ export async function POST(request: Request) {
     isDiaspora,
   )
   const total = subtotal + shippingCost
+
+  // Preorder split: if any item is isPreorder, the customer pays a
+  // configurable deposit upfront (in-stock items + shipping in full,
+  // preorder items at depositPct%) and the remaining preorder balance
+  // when the goods land in Cuba. Pure in-stock orders leave both null
+  // and the existing flow runs unchanged.
+  const stockSubtotal = snapshots
+    .filter((s) => !s.isPreorder)
+    .reduce((s, it) => s + it.unitPrice * it.quantity, 0)
+  const preorderSubtotal = snapshots
+    .filter((s) => s.isPreorder)
+    .reduce((s, it) => s + it.unitPrice * it.quantity, 0)
+  const hasPreorder = preorderSubtotal > 0
+
+  let depositAmount: number | null = null
+  let balanceAmount: number | null = null
+  if (hasPreorder) {
+    const settingsRows = await getSettingValues(["preorder.depositPercentage"])
+    const depositPct = clampPct(
+      Number(settingsRows["preorder.depositPercentage"] ?? 30),
+    )
+    depositAmount =
+      stockSubtotal + (preorderSubtotal * depositPct) / 100 + shippingCost
+    balanceAmount = preorderSubtotal - (preorderSubtotal * depositPct) / 100
+  }
 
   // 9. Find or create customer (by phone).
   let customerId: string
@@ -301,6 +349,9 @@ export async function POST(request: Request) {
         shippingMethod: "Mensajería propia",
         paymentMethod: body.paymentMethod,
         notesCustomer: body.notesCustomer ?? null,
+        depositAmount: depositAmount !== null ? String(depositAmount) : null,
+        balanceAmount: balanceAmount !== null ? String(balanceAmount) : null,
+        sourcingStatus: hasPreorder ? "not_started" : null,
       })
 
       await tx.insert(orderItems).values(
@@ -340,6 +391,8 @@ export async function POST(request: Request) {
         subtotal: s.unitPrice * s.quantity,
       })),
       total,
+      depositAmount,
+      balanceAmount,
       customerName: body.customer.name,
       shippingSummary,
       paymentMethod: body.paymentMethod,
@@ -364,6 +417,8 @@ export async function POST(request: Request) {
       total,
       subtotal,
       shippingCost,
+      depositAmount,
+      balanceAmount,
       whatsappUrl,
     })
   } catch (err) {

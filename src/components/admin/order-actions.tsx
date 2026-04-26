@@ -8,6 +8,9 @@ import {
   Clock,
   Loader2,
   Package,
+  PackageCheck,
+  PlaneTakeoff,
+  ShoppingCart,
   Truck,
   Wallet,
   XCircle,
@@ -16,6 +19,8 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import type { MockOrder } from "@/lib/mock-orders"
 import {
+  approveBalance,
+  approveDeposit,
   approvePayment,
   cancelOrder,
   confirmOrder,
@@ -24,6 +29,7 @@ import {
   markPreparing,
   markShipped,
   rejectPayment,
+  setSourcingStatus,
 } from "@/app/admin/(panel)/orders/actions"
 
 interface OrderActionsProps {
@@ -32,18 +38,6 @@ interface OrderActionsProps {
 
 type ServerAction = (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
 
-/**
- * Action panel for the order detail page. Drives the next-step UI off
- * the three real schema columns:
- *   - status:             pending → confirmed → shipped → delivered
- *   - paymentStatus:      unpaid → proof_uploaded → verified
- *   - fulfillmentStatus:  unfulfilled → preparing → shipped → delivered
- *
- * The schema separates status/payment/fulfillment so an order can be
- * "confirmed" while waiting for payment, then "confirmed + verified"
- * while preparing, etc. This component reads all three to decide what
- * the next action should be.
- */
 export function OrderActions({ order }: OrderActionsProps) {
   const router = useRouter()
   const [loading, setLoading] = React.useState(false)
@@ -65,6 +59,10 @@ export function OrderActions({ order }: OrderActionsProps) {
     toast.success(successMsg, description ? { description } : undefined)
     router.refresh()
   }
+
+  // Whether this order is split into deposit + balance.
+  const isPreorder =
+    order.depositAmount !== null && order.depositAmount !== undefined
 
   // Terminal states first.
   if (order.status === "delivered") {
@@ -103,7 +101,7 @@ export function OrderActions({ order }: OrderActionsProps) {
           <Banner
             tone="warning"
             title="Acción requerida"
-            body="Habla con el cliente por WhatsApp y confirma el pedido cuando esté todo OK."
+            body="Habla con el cliente por WhatsApp y confirma cuando esté todo OK."
           />
           <Button
             type="button"
@@ -113,7 +111,9 @@ export function OrderActions({ order }: OrderActionsProps) {
               run(
                 confirmOrder,
                 "Pedido confirmado",
-                "Avisa al cliente para que proceda con el pago.",
+                isPreorder
+                  ? "Avisa al cliente del depósito a pagar."
+                  : "Avisa al cliente para que proceda con el pago.",
               )
             }
           >
@@ -127,8 +127,162 @@ export function OrderActions({ order }: OrderActionsProps) {
         </>
       )}
 
-      {/* Step 2 — confirmed: depends on payment */}
+      {/* PRE-ORDER FLOW
+          confirmed → wait for deposit → mark sourcing → in_transit → arrived →
+          wait for balance → preparing → shipped → delivered */}
+      {order.status === "confirmed" && isPreorder && (
+        <>
+          {/* Awaiting deposit */}
+          {!order.depositPaidAt && (
+            <>
+              <Banner
+                tone="warning"
+                title="Esperando depósito"
+                body={`El cliente debe pagar $${order.depositAmount?.toFixed(0)} ahora. Cuando recibas el comprobante, apruébalo aquí.`}
+              />
+              {order.paymentMethod === "cash_on_delivery" ? (
+                <Button
+                  type="button"
+                  disabled={loading}
+                  className="gap-2"
+                  onClick={() =>
+                    run(
+                      approveDeposit,
+                      "Depósito recibido",
+                      "Pasa a buscar el producto al proveedor.",
+                    )
+                  }
+                >
+                  <Wallet className="size-4" />
+                  Marcar depósito recibido
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={loading}
+                  className="gap-2"
+                  onClick={() =>
+                    run(
+                      approveDeposit,
+                      "Depósito aprobado",
+                      "Pasa a buscar el producto al proveedor.",
+                    )
+                  }
+                >
+                  <CheckCircle2 className="size-4" />
+                  Aprobar depósito
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Sourcing flow — after deposit is in */}
+          {order.depositPaidAt && order.sourcingStatus === "sourcing" && (
+            <>
+              <Banner
+                tone="info"
+                title="Pidiendo al proveedor"
+                body="Cuando el proveedor confirme el envío hacia Cuba, márcalo en camino."
+              />
+              <Button
+                type="button"
+                disabled={loading}
+                className="gap-2"
+                onClick={() =>
+                  run(
+                    () => setSourcingStatus(order.id, "in_transit"),
+                    "Marcado en camino",
+                    "Cuando llegue al stock, márcalo aquí.",
+                  )
+                }
+              >
+                <PlaneTakeoff className="size-4" />
+                Marcar en camino
+              </Button>
+            </>
+          )}
+
+          {order.depositPaidAt && order.sourcingStatus === "in_transit" && (
+            <>
+              <Banner
+                tone="info"
+                title="En camino a Cuba"
+                body="Cuando el producto llegue a tu stock, márcalo y pídele al cliente el saldo."
+              />
+              <Button
+                type="button"
+                disabled={loading}
+                className="gap-2"
+                onClick={() =>
+                  run(
+                    () => setSourcingStatus(order.id, "arrived"),
+                    "Llegó al stock",
+                    "Avisa al cliente para que pague el saldo.",
+                  )
+                }
+              >
+                <PackageCheck className="size-4" />
+                Marcar como llegado
+              </Button>
+            </>
+          )}
+
+          {/* Arrived — awaiting balance */}
+          {order.depositPaidAt &&
+            order.sourcingStatus === "arrived" &&
+            !order.balancePaidAt && (
+              <>
+                <Banner
+                  tone="warning"
+                  title="Esperando saldo"
+                  body={`El producto está en tu stock. El cliente debe pagar $${order.balanceAmount?.toFixed(0)} para que se le envíe.`}
+                />
+                <Button
+                  type="button"
+                  disabled={loading}
+                  className="gap-2"
+                  onClick={() =>
+                    run(
+                      approveBalance,
+                      "Saldo recibido",
+                      "Pasa a preparación del envío.",
+                    )
+                  }
+                >
+                  <CheckCircle2 className="size-4" />
+                  Aprobar saldo
+                </Button>
+              </>
+            )}
+
+          {/* Balance paid — ready to prepare */}
+          {order.balancePaidAt &&
+            (order.fulfillmentStatus ?? "unfulfilled") === "unfulfilled" && (
+              <>
+                <Banner
+                  tone="info"
+                  title="Listo para preparar"
+                  body="Saldo recibido. Empaqueta y prepara el envío al cliente."
+                />
+                <Button
+                  type="button"
+                  disabled={loading}
+                  className="gap-2"
+                  onClick={() =>
+                    run(markPreparing, "En preparación", "Cuando salga, márcalo enviado.")
+                  }
+                >
+                  <Package className="size-4" />
+                  Marcar como preparando
+                </Button>
+              </>
+            )}
+        </>
+      )}
+
+      {/* IN-STOCK FLOW — original behavior, unchanged */}
       {order.status === "confirmed" &&
+        !isPreorder &&
         (order.paymentStatus ?? "unpaid") === "unpaid" && (
           <>
             {order.paymentMethod === "cash_on_delivery" ? (
@@ -172,8 +326,8 @@ export function OrderActions({ order }: OrderActionsProps) {
           </>
         )}
 
-      {/* Payment proof was uploaded → Ever verifies */}
       {order.status === "confirmed" &&
+        !isPreorder &&
         order.paymentStatus === "proof_uploaded" && (
           <>
             <Banner
@@ -186,11 +340,7 @@ export function OrderActions({ order }: OrderActionsProps) {
               disabled={loading}
               className="gap-2"
               onClick={() =>
-                run(
-                  approvePayment,
-                  "Pago verificado",
-                  "Pedido pasa a preparación.",
-                )
+                run(approvePayment, "Pago verificado", "Pedido pasa a preparación.")
               }
             >
               <CheckCircle2 className="size-4" />
@@ -202,11 +352,7 @@ export function OrderActions({ order }: OrderActionsProps) {
               disabled={loading}
               className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
               onClick={() =>
-                run(
-                  rejectPayment,
-                  "Pago rechazado",
-                  "El cliente debe reenviar el comprobante.",
-                )
+                run(rejectPayment, "Pago rechazado", "Cliente debe reenviar el comprobante.")
               }
             >
               <XCircle className="size-4" />
@@ -215,8 +361,8 @@ export function OrderActions({ order }: OrderActionsProps) {
           </>
         )}
 
-      {/* Step 3 — verified: ready to prepare */}
       {order.status === "confirmed" &&
+        !isPreorder &&
         order.paymentStatus === "verified" &&
         (order.fulfillmentStatus ?? "unfulfilled") === "unfulfilled" && (
           <>
@@ -230,11 +376,7 @@ export function OrderActions({ order }: OrderActionsProps) {
               disabled={loading}
               className="gap-2"
               onClick={() =>
-                run(
-                  markPreparing,
-                  "En preparación",
-                  "Cuando esté listo para salir, márcalo enviado.",
-                )
+                run(markPreparing, "En preparación", "Cuando esté listo para salir, márcalo enviado.")
               }
             >
               <Package className="size-4" />
@@ -243,7 +385,7 @@ export function OrderActions({ order }: OrderActionsProps) {
           </>
         )}
 
-      {/* Step 4 — preparing: ready to ship */}
+      {/* SHARED FLOW from preparing → shipped → delivered */}
       {order.fulfillmentStatus === "preparing" && order.status !== "shipped" && (
         <>
           <Banner
@@ -265,7 +407,6 @@ export function OrderActions({ order }: OrderActionsProps) {
         </>
       )}
 
-      {/* Step 5 — shipped: waiting for delivery confirmation */}
       {order.status === "shipped" && (
         <>
           <Banner
@@ -278,11 +419,7 @@ export function OrderActions({ order }: OrderActionsProps) {
             disabled={loading}
             className="gap-2"
             onClick={() =>
-              run(
-                markDelivered,
-                "Pedido entregado",
-                "Pedido completado correctamente.",
-              )
+              run(markDelivered, "Pedido entregado", "Pedido completado correctamente.")
             }
           >
             <CheckCircle2 className="size-4" />
@@ -360,6 +497,67 @@ function Banner({
           </p>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Compact preorder progress strip rendered next to the order summary. */
+export function PreorderProgress({ order }: { order: MockOrder }) {
+  if (order.depositAmount === null || order.depositAmount === undefined) {
+    return null
+  }
+  const steps: { label: string; done: boolean }[] = [
+    { label: "Depósito recibido", done: !!order.depositPaidAt },
+    {
+      label: "Pidiendo al proveedor",
+      done:
+        !!order.depositPaidAt &&
+        ["sourcing", "in_transit", "arrived"].includes(
+          order.sourcingStatus ?? "",
+        ),
+    },
+    {
+      label: "En camino",
+      done:
+        !!order.depositPaidAt &&
+        ["in_transit", "arrived"].includes(order.sourcingStatus ?? ""),
+    },
+    {
+      label: "Llegó al stock",
+      done: order.sourcingStatus === "arrived",
+    },
+    { label: "Saldo recibido", done: !!order.balancePaidAt },
+  ]
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border bg-muted/30 p-3">
+      <div className="flex items-center gap-2">
+        <ShoppingCart className="size-4 text-muted-foreground" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Pedido por encargo
+        </span>
+      </div>
+      <ul className="flex flex-col gap-1">
+        {steps.map((s) => (
+          <li key={s.label} className="flex items-center gap-2 text-xs">
+            <span
+              className={`grid size-4 place-items-center rounded-full ${
+                s.done
+                  ? "bg-emerald-500/15 text-emerald-700"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {s.done ? (
+                <CheckCircle2 className="size-3" />
+              ) : (
+                <Clock className="size-3" />
+              )}
+            </span>
+            <span className={s.done ? "" : "text-muted-foreground"}>
+              {s.label}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

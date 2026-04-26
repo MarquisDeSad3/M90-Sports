@@ -38,6 +38,11 @@ export interface SiteSettings {
     facebook: string
     tiktok: string
   }
+  preorder: {
+    /** Percentage (0–100) the customer pays upfront on preorder items.
+     *  The remaining balance is paid when the goods arrive in Cuba. */
+    depositPercentage: number
+  }
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -68,6 +73,9 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     instagram: "",
     facebook: "",
     tiktok: "",
+  },
+  preorder: {
+    depositPercentage: 30,
   },
 }
 

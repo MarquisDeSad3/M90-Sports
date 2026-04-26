@@ -130,6 +130,84 @@ export async function cancelOrder(id: string, reason?: string) {
   })
 }
 
+// ---------------------------------------------------------------------------
+// Preorder-specific actions. These are no-ops for orders without
+// depositAmount set (i.e. plain in-stock orders go through the regular flow).
+// ---------------------------------------------------------------------------
+
+/** Mark the deposit as received (after Ever verifies the comprobante). */
+export async function approveDeposit(id: string) {
+  await requireAdminRole("staff")
+  try {
+    await db
+      .update(orders)
+      .set({
+        depositPaidAt: new Date(),
+        sourcingStatus: "sourcing",
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+  } catch (err) {
+    return {
+      ok: false as const,
+      error: "No se pudo aprobar el depósito: " + ((err as Error).message ?? String(err)),
+    }
+  }
+  revalidatePath("/admin/orders")
+  revalidatePath(`/admin/orders/${id}`)
+  return { ok: true as const }
+}
+
+/** Move the sourcing status forward. Allowed values: sourcing | in_transit | arrived. */
+export async function setSourcingStatus(
+  id: string,
+  status: "sourcing" | "in_transit" | "arrived",
+) {
+  await requireAdminRole("staff")
+  try {
+    await db
+      .update(orders)
+      .set({
+        sourcingStatus: status,
+        arrivedAtStockAt: status === "arrived" ? new Date() : undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+  } catch (err) {
+    return {
+      ok: false as const,
+      error: "No se pudo actualizar: " + ((err as Error).message ?? String(err)),
+    }
+  }
+  revalidatePath("/admin/orders")
+  revalidatePath(`/admin/orders/${id}`)
+  return { ok: true as const }
+}
+
+/** Mark the balance as received. Pedido pasa a paymentStatus=verified + paidAt. */
+export async function approveBalance(id: string) {
+  await requireAdminRole("staff")
+  try {
+    await db
+      .update(orders)
+      .set({
+        balancePaidAt: new Date(),
+        paymentStatus: "verified",
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+  } catch (err) {
+    return {
+      ok: false as const,
+      error: "No se pudo aprobar el saldo: " + ((err as Error).message ?? String(err)),
+    }
+  }
+  revalidatePath("/admin/orders")
+  revalidatePath(`/admin/orders/${id}`)
+  return { ok: true as const }
+}
+
 // Helper for deriving order_number atomically (server-side only)
 export async function nextOrderNumber(): Promise<string> {
   const result = await db.execute(

@@ -225,6 +225,28 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         </CardContent>
       </Card>
 
+      {/* Pedidos por encargo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Pedidos por encargo</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <Field
+            label="% de depósito"
+            hint="Lo que el cliente paga al hacer el pedido. El resto se paga cuando llegue a Cuba."
+          >
+            <Input
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              name="preorder.depositPercentage"
+              defaultValue={initial.preorder.depositPercentage}
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
       {/* Submit */}
       <div className="sticky bottom-0 -mx-4 flex items-center gap-3 border-t bg-background/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <Button type="submit" disabled={pending} className="gap-2">

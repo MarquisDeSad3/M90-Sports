@@ -51,6 +51,11 @@ const settingsSchema = z.object({
       tiktok: z.string().trim().max(200),
     })
     .strict(),
+  preorder: z
+    .object({
+      depositPercentage: z.coerce.number().min(0).max(100),
+    })
+    .strict(),
 }) satisfies z.ZodType<SiteSettings>
 
 export interface SaveSettingsState {
@@ -114,6 +119,9 @@ export async function saveSettingsAction(
       instagram: String(formData.get("social.instagram") ?? ""),
       facebook: String(formData.get("social.facebook") ?? ""),
       tiktok: String(formData.get("social.tiktok") ?? ""),
+    },
+    preorder: {
+      depositPercentage: Number(formData.get("preorder.depositPercentage") ?? 30),
     },
   }
 
