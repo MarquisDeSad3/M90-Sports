@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { eq, sql } from "drizzle-orm"
+import { eq, inArray, sql } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
 import {
@@ -192,11 +192,7 @@ export async function POST(request: Request) {
     })
     .from(variants)
     .innerJoin(products, eq(products.id, variants.productId))
-    .where(
-      variantIds.length === 1
-        ? eq(variants.id, variantIds[0]!)
-        : sql`${variants.id} = ANY(${variantIds})`,
-    )
+    .where(inArray(variants.id, variantIds))
 
   if (variantRows.length !== variantIds.length) {
     return fail(400, "Uno o más productos del carrito no están disponibles.")
