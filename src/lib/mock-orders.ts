@@ -39,6 +39,8 @@ export interface MockOrderItem {
   productName: string
   team: string
   number?: string
+  /** Primary image URL of the product at order time. */
+  imageUrl?: string
   variantSize: string
   unitPrice: number
   quantity: number
@@ -84,6 +86,19 @@ export interface MockOrder {
   paymentVerified: boolean
   paymentTransactionRef?: string
   proofUploaded: boolean
+  /** Direct schema columns used by the action panel to drive next-step logic. */
+  paymentStatus?:
+    | "unpaid"
+    | "proof_uploaded"
+    | "verified"
+    | "failed"
+    | "refunded"
+  fulfillmentStatus?:
+    | "unfulfilled"
+    | "preparing"
+    | "shipped"
+    | "delivered"
+    | "returned"
 
   notesCustomer?: string
   notesInternal?: string

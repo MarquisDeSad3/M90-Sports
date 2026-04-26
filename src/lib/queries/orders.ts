@@ -7,6 +7,9 @@ import {
   orderItems,
   orders,
   payments,
+  productImages,
+  products,
+  variants,
 } from "@/lib/db/schema"
 import type {
   MockOrder,
@@ -58,6 +61,7 @@ export async function getOrders(filters: OrderFilters = {}): Promise<MockOrder[]
       orderNumber: orders.orderNumber,
       status: orders.status,
       paymentStatus: orders.paymentStatus,
+      fulfillmentStatus: orders.fulfillmentStatus,
       subtotal: orders.subtotal,
       shippingCost: orders.shippingCost,
       discountTotal: orders.discountTotal,
@@ -110,9 +114,38 @@ export async function getOrders(filters: OrderFilters = {}): Promise<MockOrder[]
     : []
   const addressesMap = new Map(addressesData.map((a) => [a.id, a]))
 
+  // Pull items along with each variant's product context (team, productId)
+  // and the product's primary image URL. LEFT JOINs because variants and
+  // images may have been deleted after the order was placed — we still want
+  // to show the historical name from order_items.
   const itemsData = await db
-    .select()
+    .select({
+      id: orderItems.id,
+      orderId: orderItems.orderId,
+      variantId: orderItems.variantId,
+      productName: orderItems.productName,
+      variantSize: orderItems.variantSize,
+      sku: orderItems.sku,
+      quantity: orderItems.quantity,
+      unitPrice: orderItems.unitPrice,
+      subtotal: orderItems.subtotal,
+      createdAt: orderItems.createdAt,
+      productId: variants.productId,
+      productTeam: products.team,
+      productNumber: products.playerNumber,
+      productSlug: products.slug,
+      imageUrl: productImages.url,
+    })
     .from(orderItems)
+    .leftJoin(variants, eq(variants.id, orderItems.variantId))
+    .leftJoin(products, eq(products.id, variants.productId))
+    .leftJoin(
+      productImages,
+      and(
+        eq(productImages.productId, variants.productId),
+        eq(productImages.isPrimary, true),
+      ),
+    )
     .where(or(...orderIds.map((id) => eq(orderItems.orderId, id)))!)
   const itemsByOrder = new Map<string, typeof itemsData>()
   for (const it of itemsData) {
@@ -177,10 +210,11 @@ export async function getOrders(filters: OrderFilters = {}): Promise<MockOrder[]
       items: items.map(
         (it): MockOrderItem => ({
           id: it.id,
-          productId: "",
+          productId: it.productId ?? "",
           productName: it.productName,
-          team: "",
-          number: undefined,
+          team: it.productTeam ?? "",
+          number: it.productNumber ?? undefined,
+          imageUrl: it.imageUrl ?? undefined,
           variantSize: it.variantSize ?? "M",
           unitPrice: Number(it.unitPrice),
           quantity: it.quantity,
@@ -198,6 +232,8 @@ export async function getOrders(filters: OrderFilters = {}): Promise<MockOrder[]
       paymentVerified,
       paymentTransactionRef: transactionRef ?? undefined,
       proofUploaded,
+      paymentStatus: r.paymentStatus as MockOrder["paymentStatus"],
+      fulfillmentStatus: r.fulfillmentStatus as MockOrder["fulfillmentStatus"],
       notesCustomer: r.notesCustomer ?? undefined,
       notesInternal: r.notesInternal ?? undefined,
       couponCode: r.couponCode ?? undefined,

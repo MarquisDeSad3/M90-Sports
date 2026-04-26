@@ -133,6 +133,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
                       team={item.team}
                       number={item.number}
                       size="md"
+                      imageUrl={item.imageUrl}
                     />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <Link

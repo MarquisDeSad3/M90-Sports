@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import {
+  AlertCircle,
   CheckCircle2,
   Clock,
   Loader2,
@@ -13,9 +14,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import {
-  AlertCircle,
-} from "lucide-react"
 import type { MockOrder } from "@/lib/mock-orders"
 import {
   approvePayment,
@@ -34,16 +32,27 @@ interface OrderActionsProps {
 
 type ServerAction = (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
 
+/**
+ * Action panel for the order detail page. Drives the next-step UI off
+ * the three real schema columns:
+ *   - status:             pending → confirmed → shipped → delivered
+ *   - paymentStatus:      unpaid → proof_uploaded → verified
+ *   - fulfillmentStatus:  unfulfilled → preparing → shipped → delivered
+ *
+ * The schema separates status/payment/fulfillment so an order can be
+ * "confirmed" while waiting for payment, then "confirmed + verified"
+ * while preparing, etc. This component reads all three to decide what
+ * the next action should be.
+ */
 export function OrderActions({ order }: OrderActionsProps) {
   const router = useRouter()
   const [loading, setLoading] = React.useState(false)
 
-  const run = async (
+  async function run(
     action: ServerAction,
     successMsg: string,
     description?: string,
-    redirectBack = false
-  ) => {
+  ) {
     setLoading(true)
     const result = await action(order.id)
     setLoading(false)
@@ -54,87 +63,57 @@ export function OrderActions({ order }: OrderActionsProps) {
       return
     }
     toast.success(successMsg, description ? { description } : undefined)
-    if (redirectBack) {
-      router.push("/admin/orders")
-    } else {
-      router.refresh()
-    }
+    router.refresh()
   }
 
-  const trigger = (
-    successMsg: string,
-    description: string,
-    redirectBack = false,
-    action?: ServerAction
-  ) => {
-    if (!action) {
-      // Fallback for terminal states already handled above
-      return
-    }
-    void run(action, successMsg, description, redirectBack)
-  }
-
-  // Cancelled or Delivered — terminal state, no action
+  // Terminal states first.
   if (order.status === "delivered") {
     return (
-      <div className="flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-            Pedido entregado
-          </span>
-          <span className="text-xs text-muted-foreground">
-            Pedido completado correctamente.
-          </span>
-        </div>
-      </div>
+      <Banner
+        tone="success"
+        title="Pedido entregado"
+        body="El pedido ya llegó al cliente."
+      />
     )
   }
-
   if (order.status === "cancelled") {
     return (
-      <div className="flex items-start gap-3 rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
-        <XCircle className="mt-0.5 size-5 shrink-0 text-rose-600" />
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">
-            Pedido cancelado
-          </span>
-          {order.cancelReason && (
-            <span className="text-xs text-muted-foreground">
-              {order.cancelReason}
-            </span>
-          )}
-        </div>
-      </div>
+      <Banner
+        tone="destructive"
+        title="Pedido cancelado"
+        body={order.cancelReason}
+      />
+    )
+  }
+  if (order.status === "refunded") {
+    return (
+      <Banner
+        tone="destructive"
+        title="Pedido reembolsado"
+        body="Devolución completada."
+      />
     )
   }
 
   return (
     <div className="flex flex-col gap-2.5">
-      {order.status === "pending_confirmation" && (
+      {/* Step 1 — pending: needs Ever's confirmation */}
+      {order.status === "pending" && (
         <>
-          <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-            <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">
-                Acción requerida
-              </span>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Habla con el cliente por WhatsApp, edita lo que sea necesario y
-                confirma cuando esté todo OK.
-              </p>
-            </div>
-          </div>
+          <Banner
+            tone="warning"
+            title="Acción requerida"
+            body="Habla con el cliente por WhatsApp y confirma el pedido cuando esté todo OK."
+          />
           <Button
             type="button"
-            className="gap-2"
             disabled={loading}
+            className="gap-2"
             onClick={() =>
-              trigger(
+              run(
+                confirmOrder,
                 "Pedido confirmado",
                 "Avisa al cliente para que proceda con el pago.",
-                true,
-                confirmOrder
               )
             }
           >
@@ -145,195 +124,242 @@ export function OrderActions({ order }: OrderActionsProps) {
             )}
             Confirmar pedido
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading}
-            className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
-            onClick={() =>
-              trigger("Pedido cancelado", "Marcado como cancelado.", true, cancelOrder)
-            }
-          >
-            <XCircle className="size-4" />
-            Cancelar pedido
-          </Button>
         </>
       )}
 
-      {order.status === "confirmed" && !order.proofUploaded && (
-        <>
-          <div className="flex items-start gap-2.5 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-            <Clock className="mt-0.5 size-4 shrink-0 text-sky-600" />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold text-sky-800 dark:text-sky-200">
-                Esperando pago
-              </span>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                El cliente debe realizar el pago y subir el comprobante (o pagar
-                contra entrega).
-              </p>
-            </div>
-          </div>
-          {order.paymentMethod === "cash_on_delivery" ? (
+      {/* Step 2 — confirmed: depends on payment */}
+      {order.status === "confirmed" &&
+        (order.paymentStatus ?? "unpaid") === "unpaid" && (
+          <>
+            {order.paymentMethod === "cash_on_delivery" ? (
+              <>
+                <Banner
+                  tone="info"
+                  title="Efectivo a la entrega"
+                  body="Cuando el mensajero entregue y reciba el pago, márcalo aquí."
+                />
+                <Button
+                  type="button"
+                  disabled={loading}
+                  className="gap-2"
+                  onClick={() =>
+                    run(
+                      markPaidCoD,
+                      "Marcado como pagado",
+                      "Pedido pasa a preparación.",
+                    )
+                  }
+                >
+                  <Wallet className="size-4" />
+                  Marcar como pagado
+                </Button>
+              </>
+            ) : (
+              <Banner
+                tone="info"
+                title="Esperando comprobante"
+                body={`El cliente debe pagar por ${
+                  order.paymentMethod === "transfermovil"
+                    ? "Transfermóvil"
+                    : order.paymentMethod === "zelle"
+                      ? "Zelle"
+                      : order.paymentMethod === "paypal"
+                        ? "PayPal"
+                        : order.paymentMethod
+                } y enviarte el comprobante.`}
+              />
+            )}
+          </>
+        )}
+
+      {/* Payment proof was uploaded → Ever verifies */}
+      {order.status === "confirmed" &&
+        order.paymentStatus === "proof_uploaded" && (
+          <>
+            <Banner
+              tone="warning"
+              title="Verifica el pago"
+              body="Revisa el comprobante. Si el monto y la cuenta coinciden, aprueba."
+            />
+            <Button
+              type="button"
+              disabled={loading}
+              className="gap-2"
+              onClick={() =>
+                run(
+                  approvePayment,
+                  "Pago verificado",
+                  "Pedido pasa a preparación.",
+                )
+              }
+            >
+              <CheckCircle2 className="size-4" />
+              Aprobar pago
+            </Button>
             <Button
               type="button"
               variant="outline"
               disabled={loading}
-              className="gap-2"
+              className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
               onClick={() =>
-                trigger(
-                  "Marcado como pagado",
-                  "Pasa a preparación.",
-                  true,
-                  markPaidCoD
+                run(
+                  rejectPayment,
+                  "Pago rechazado",
+                  "El cliente debe reenviar el comprobante.",
                 )
               }
             >
-              <Wallet className="size-4" />
-              Marcar como pagado (CoD)
+              <XCircle className="size-4" />
+              Rechazar pago
             </Button>
-          ) : (
+          </>
+        )}
+
+      {/* Step 3 — verified: ready to prepare */}
+      {order.status === "confirmed" &&
+        order.paymentStatus === "verified" &&
+        (order.fulfillmentStatus ?? "unfulfilled") === "unfulfilled" && (
+          <>
+            <Banner
+              tone="info"
+              title="Pago confirmado"
+              body="Empaqueta y prepara el envío."
+            />
             <Button
               type="button"
-              variant="outline"
+              disabled={loading}
               className="gap-2"
-              disabled
+              onClick={() =>
+                run(
+                  markPreparing,
+                  "En preparación",
+                  "Cuando esté listo para salir, márcalo enviado.",
+                )
+              }
             >
-              <Wallet className="size-4" />
-              Esperando comprobante
+              <Package className="size-4" />
+              Marcar como preparando
             </Button>
-          )}
-        </>
-      )}
+          </>
+        )}
 
-      {order.status === "payment_uploaded" && (
+      {/* Step 4 — preparing: ready to ship */}
+      {order.fulfillmentStatus === "preparing" && order.status !== "shipped" && (
         <>
-          <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-            <Wallet className="mt-0.5 size-4 shrink-0 text-amber-600" />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">
-                Verifica el pago
-              </span>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Revisa el comprobante en{" "}
-                {order.paymentMethod === "transfermovil"
-                  ? "Transfermóvil"
-                  : order.paymentMethod}
-                . Si el monto y la cuenta coinciden, aprueba.
-              </p>
-            </div>
-          </div>
+          <Banner
+            tone="info"
+            title="En preparación"
+            body="Cuando salga el paquete, márcalo enviado."
+          />
           <Button
             type="button"
             disabled={loading}
             className="gap-2"
             onClick={() =>
-              trigger(
-                "Pago verificado",
-                "Pedido pasa a preparación.",
-                true,
-                approvePayment
-              )
+              run(markShipped, "Pedido enviado", "Cliente recibirá notificación.")
             }
           >
-            <CheckCircle2 className="size-4" />
-            Aprobar pago
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading}
-            className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
-            onClick={() =>
-              trigger(
-                "Pago rechazado",
-                "Cliente debe reenviar comprobante.",
-                false,
-                rejectPayment
-              )
-            }
-          >
-            <XCircle className="size-4" />
-            Rechazar pago
+            <Truck className="size-4" />
+            Marcar como enviado
           </Button>
         </>
       )}
 
-      {order.status === "paid" && (
-        <Button
-          type="button"
-          disabled={loading}
-          className="gap-2"
-          onClick={() =>
-            trigger(
-              "Marcado como preparando",
-              "Empaqueta y prepara para envío.",
-              true,
-              markPreparing
-            )
-          }
-        >
-          <Package className="size-4" />
-          Marcar como preparando
-        </Button>
-      )}
-
-      {order.status === "preparing" && (
-        <Button
-          type="button"
-          disabled={loading}
-          className="gap-2"
-          onClick={() =>
-            trigger(
-              "Pedido enviado",
-              "Cliente recibirá notificación.",
-              true,
-              markShipped
-            )
-          }
-        >
-          <Truck className="size-4" />
-          Marcar como enviado
-        </Button>
-      )}
-
+      {/* Step 5 — shipped: waiting for delivery confirmation */}
       {order.status === "shipped" && (
-        <Button
-          type="button"
-          disabled={loading}
-          className="gap-2"
-          onClick={() =>
-            trigger(
-              "Pedido entregado",
-              "¡Genial! Pedido completado.",
-              true,
-              markDelivered
-            )
-          }
-        >
-          <CheckCircle2 className="size-4" />
-          Marcar como entregado
-        </Button>
+        <>
+          <Banner
+            tone="info"
+            title="En tránsito"
+            body="Cuando el cliente confirme que recibió, márcalo entregado."
+          />
+          <Button
+            type="button"
+            disabled={loading}
+            className="gap-2"
+            onClick={() =>
+              run(
+                markDelivered,
+                "Pedido entregado",
+                "Pedido completado correctamente.",
+              )
+            }
+          >
+            <CheckCircle2 className="size-4" />
+            Marcar como entregado
+          </Button>
+        </>
       )}
 
-      {/* Universal cancel button (except in terminal states) */}
-      {!["pending_confirmation", "delivered", "cancelled"].includes(
-        order.status
-      ) && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={loading}
-          className="gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
-          onClick={() =>
-            trigger("Pedido cancelado", "Marcado como cancelado.", true, cancelOrder)
-          }
-        >
-          <XCircle className="size-4" />
-          Cancelar pedido
-        </Button>
-      )}
+      {/* Universal cancel — available in any non-terminal state */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={loading}
+        className="mt-1 gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
+        onClick={() =>
+          run(cancelOrder, "Pedido cancelado", "Marcado como cancelado.")
+        }
+      >
+        <XCircle className="size-4" />
+        Cancelar pedido
+      </Button>
+    </div>
+  )
+}
+
+function Banner({
+  tone,
+  title,
+  body,
+}: {
+  tone: "warning" | "info" | "success" | "destructive"
+  title: string
+  body?: string
+}) {
+  const styles = {
+    warning: {
+      wrapper: "border-amber-500/20 bg-amber-500/5",
+      icon: AlertCircle,
+      iconColor: "text-amber-600",
+      titleColor: "text-amber-800 dark:text-amber-200",
+    },
+    info: {
+      wrapper: "border-sky-500/20 bg-sky-500/5",
+      icon: Clock,
+      iconColor: "text-sky-600",
+      titleColor: "text-sky-800 dark:text-sky-200",
+    },
+    success: {
+      wrapper: "border-emerald-500/20 bg-emerald-500/5",
+      icon: CheckCircle2,
+      iconColor: "text-emerald-600",
+      titleColor: "text-emerald-800 dark:text-emerald-200",
+    },
+    destructive: {
+      wrapper: "border-rose-500/20 bg-rose-500/5",
+      icon: XCircle,
+      iconColor: "text-rose-600",
+      titleColor: "text-rose-800 dark:text-rose-200",
+    },
+  }[tone]
+  const Icon = styles.icon
+  return (
+    <div
+      className={`flex items-start gap-2.5 rounded-lg border p-3 ${styles.wrapper}`}
+    >
+      <Icon className={`mt-0.5 size-4 shrink-0 ${styles.iconColor}`} />
+      <div className="flex flex-col gap-0.5">
+        <span className={`text-xs font-semibold ${styles.titleColor}`}>
+          {title}
+        </span>
+        {body && (
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {body}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
