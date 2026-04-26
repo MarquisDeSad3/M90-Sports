@@ -155,7 +155,18 @@ export async function POST(request: Request) {
   // 5. Schema validation — strict mode rejects unknown fields.
   const parsed = orderInputSchema.safeParse(raw)
   if (!parsed.success) {
-    logSecurityEvent({ ip, reason: "schema", status: 400, ua })
+    // Log which field tripped so we can debug rejected legitimate orders
+    // without having to reproduce the exact payload. The client still
+    // gets a generic 400 — the breakdown stays in the server logs.
+    const issues = parsed.error.issues.slice(0, 3).map(
+      (i) => `${i.path.join(".") || "(root)"}: ${i.code}`,
+    )
+    logSecurityEvent({
+      ip,
+      reason: `schema:${issues.join("|")}`,
+      status: 400,
+      ua,
+    })
     return fail(400, "No pudimos validar tu solicitud.")
   }
   const body: OrderInput = parsed.data

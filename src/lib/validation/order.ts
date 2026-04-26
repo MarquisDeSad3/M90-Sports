@@ -45,14 +45,16 @@ export const customerSchema = z
   .object({
     name: trimmed(120),
     phone: trimmed(20).regex(phoneRegex, "Teléfono inválido"),
-    email: optionalTrimmed(120).pipe(
-      z
-        .string()
-        .email("Email inválido")
-        .optional()
-        .or(z.literal(undefined)),
+    // Email is optional but must be a valid address when present.
+    // The .email() validator accepts the empty string oddly, so we
+    // bridge through optionalTrimmed() to coerce "" → undefined first.
+    email: optionalTrimmed(120).refine(
+      (v) => v === undefined || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+      { message: "Email inválido" },
     ),
-    country: optionalTrimmed(2),
+    // Country code is usually ISO-2 ("CU", "US", "ES") but the form
+    // also sends "OTHER" for the "Otro" option in the diaspora picker.
+    country: optionalTrimmed(40),
   })
   .strict()
 
