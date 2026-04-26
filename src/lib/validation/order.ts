@@ -26,7 +26,13 @@ const optionalTrimmed = (max: number) =>
 
 export const orderItemSchema = z
   .object({
-    variantId: trimmed(64).regex(/^var_[a-z0-9]+$/, "ID de variante inválido"),
+    // Variant IDs from createId() are var_<cuid2>, but legacy IDs from
+    // the base44 migration are var_b44_<hex> (extra underscore + dash
+    // possible). Allow both — only the prefix matters as a sanity check.
+    variantId: trimmed(64).regex(
+      /^var_[a-z0-9_-]+$/i,
+      "ID de variante inválido",
+    ),
     quantity: z
       .number()
       .int("Cantidad debe ser entero")
