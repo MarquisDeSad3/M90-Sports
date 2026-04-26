@@ -54,6 +54,12 @@ export const adminNav: NavGroup[] = [
         icon: Tag,
         description: "Colecciones y secciones",
       },
+      {
+        title: "Por encargo",
+        href: "/admin/preorders",
+        icon: Sparkles,
+        description: "Productos que pedimos al proveedor",
+      },
     ],
   },
   {
