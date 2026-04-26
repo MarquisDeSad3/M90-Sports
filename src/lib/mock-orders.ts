@@ -2,15 +2,25 @@
  * Mock orders data layer. Replace with Drizzle once VPS is live.
  */
 
+/**
+ * Order status union. Includes both the legacy mock states (used in
+ * tests / fixtures) and the real schema enum the DB actually emits.
+ * Keeping both prevents runtime crashes when an order created via
+ * /api/orders ("pending") is rendered alongside mock data.
+ */
 export type OrderStatus =
-  | "pending_confirmation"  // came from web, awaiting Ever's confirmation
-  | "confirmed"             // closed, awaiting payment
-  | "payment_uploaded"      // proof uploaded, needs verification
-  | "paid"                  // payment verified
-  | "preparing"             // packing
+  // Real schema states (orderStatusEnum)
+  | "pending"               // came from web, awaiting confirmation
+  | "confirmed"             // confirmed, awaiting payment
   | "shipped"               // in transit
   | "delivered"             // received by customer
   | "cancelled"             // cancelled (any stage)
+  | "refunded"              // refunded
+  // Legacy mock-only states (kept for backwards compat)
+  | "pending_confirmation"
+  | "payment_uploaded"
+  | "paid"
+  | "preparing"
 
 export type PaymentMethodType =
   | "transfermovil"
@@ -596,14 +606,18 @@ export const mockOrders: MockOrder[] = [
 ]
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  pending_confirmation: "Por confirmar",
+  // Real schema states
+  pending: "Por confirmar",
   confirmed: "Confirmado",
-  payment_uploaded: "Verificar pago",
-  paid: "Pagado",
-  preparing: "Preparando",
   shipped: "Enviado",
   delivered: "Entregado",
   cancelled: "Cancelado",
+  refunded: "Reembolsado",
+  // Legacy mock states
+  pending_confirmation: "Por confirmar",
+  payment_uploaded: "Verificar pago",
+  paid: "Pagado",
+  preparing: "Preparando",
 }
 
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethodType, string> = {
@@ -620,25 +634,27 @@ export const ORDER_SOURCE_LABEL: Record<OrderSource, string> = {
 }
 
 export function getOrderStatusVariant(
-  status: OrderStatus
+  status: OrderStatus,
 ): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" | "info" {
   switch (status) {
+    case "pending":
     case "pending_confirmation":
-      return "warning"
-    case "confirmed":
-      return "info"
     case "payment_uploaded":
       return "warning"
+    case "confirmed":
     case "paid":
-      return "info"
     case "preparing":
-      return "info"
     case "shipped":
       return "info"
     case "delivered":
       return "success"
     case "cancelled":
+    case "refunded":
       return "destructive"
+    default:
+      // Future-proof against new schema states — fall back to neutral
+      // instead of crashing.
+      return "secondary"
   }
 }
 

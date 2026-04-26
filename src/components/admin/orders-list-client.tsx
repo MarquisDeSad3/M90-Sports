@@ -63,7 +63,7 @@ export function OrdersListClient({ orders: initialOrders, counts }: OrdersListCl
       .filter((o) => {
         if (statusFilter === "all") return true
         if (statusFilter === "needs_action") {
-          return ["pending_confirmation", "payment_uploaded"].includes(o.status)
+          return ["pending", "payment_uploaded"].includes(o.status)
         }
         return o.status === statusFilter
       })
@@ -85,7 +85,7 @@ export function OrdersListClient({ orders: initialOrders, counts }: OrdersListCl
       })
       .sort((a, b) => {
         const order: OrderStatus[] = [
-          "pending_confirmation",
+          "pending",
           "payment_uploaded",
           "confirmed",
           "paid",
@@ -134,12 +134,12 @@ export function OrdersListClient({ orders: initialOrders, counts }: OrdersListCl
           value={stats.pending}
           icon={AlertCircle}
           tone="warning"
-          active={statusFilter === "pending_confirmation"}
+          active={statusFilter === "pending"}
           onClick={() =>
             setStatusFilter(
-              statusFilter === "pending_confirmation"
+              statusFilter === "pending"
                 ? "all"
-                : "pending_confirmation"
+                : "pending"
             )
           }
           urgent={stats.pending > 0}
@@ -230,7 +230,7 @@ export function OrdersListClient({ orders: initialOrders, counts }: OrdersListCl
               <DropdownMenuSeparator />
               {(
                 [
-                  "pending_confirmation",
+                  "pending",
                   "confirmed",
                   "payment_uploaded",
                   "paid",
@@ -308,7 +308,7 @@ export function OrdersListClient({ orders: initialOrders, counts }: OrdersListCl
             </thead>
             <tbody className="divide-y">
               {filtered.map((order) => {
-                const isUrgent = ["pending_confirmation", "payment_uploaded"].includes(
+                const isUrgent = ["pending", "payment_uploaded"].includes(
                   order.status
                 )
                 return (
@@ -417,7 +417,7 @@ export function OrdersListClient({ orders: initialOrders, counts }: OrdersListCl
       {filtered.length > 0 && (
         <div className="flex flex-col gap-3 md:hidden">
           {filtered.map((order) => {
-            const isUrgent = ["pending_confirmation", "payment_uploaded"].includes(
+            const isUrgent = ["pending", "payment_uploaded"].includes(
               order.status
             )
             return (
