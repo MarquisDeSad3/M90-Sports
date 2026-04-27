@@ -77,6 +77,7 @@ export default function CheckoutPage() {
   const [reference, setReference] = React.useState("")
   const [paymentMethod, setPaymentMethod] = React.useState<typeof PAYMENT_METHODS[number]["value"]>("transfermovil")
   const [notes, setNotes] = React.useState("")
+  const [couponCode, setCouponCode] = React.useState("")
 
   // Anti-bot signals (read by /api/orders). The honeypot is an
   // invisible input — real users never see or fill it. The timestamp
@@ -137,6 +138,7 @@ export default function CheckoutPage() {
           },
           paymentMethod,
           notesCustomer: notes.trim() || undefined,
+          couponCode: couponCode.trim() || undefined,
           _hp: honeypot,
           _t: formStartedAt.current,
         }),
@@ -410,6 +412,22 @@ export default function CheckoutPage() {
               </label>
             ))}
           </div>
+        </Section>
+
+        {/* Coupon */}
+        <Section title="Cupón (opcional)">
+          <input
+            type="text"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            placeholder="Ej. BIENVENIDO10"
+            maxLength={40}
+            autoComplete="off"
+            className="w-full rounded-lg border border-[rgba(1,27,83,0.2)] bg-white px-3 py-2 font-mono text-sm uppercase tracking-wider text-[#011b53] outline-none focus:border-[#011b53]"
+          />
+          <p className="mt-1 text-[11px] text-[#011b53]/55">
+            Si tienes un código de descuento, escríbelo arriba. Lo aplicamos al confirmar.
+          </p>
         </Section>
 
         {/* Notes */}

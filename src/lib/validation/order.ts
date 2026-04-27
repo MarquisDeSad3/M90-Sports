@@ -95,6 +95,12 @@ export const orderInputSchema = z
     shippingAddress: shippingAddressSchema,
     paymentMethod: paymentMethodSchema,
     notesCustomer: optionalTrimmed(500),
+    couponCode: z
+      .string()
+      .trim()
+      .max(40)
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
 
     // Anti-bot signals — see lib/security/rate-limit.ts.
     // Honeypot input — must be empty.

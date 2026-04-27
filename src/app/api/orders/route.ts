@@ -4,6 +4,7 @@ import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
 import {
   addresses,
+  coupons,
   customers,
   orderItems,
   orders,
@@ -11,6 +12,8 @@ import {
   products,
 } from "@/lib/db/schema"
 import { orderInputSchema, type OrderInput } from "@/lib/validation/order"
+import { resolveShippingCost } from "@/lib/checkout/shipping"
+import { applyCoupon } from "@/lib/checkout/coupon"
 import {
   banIp,
   checkAntiBot,
@@ -46,23 +49,9 @@ function logSecurityEvent(event: {
   console.warn("[orders][security]", JSON.stringify(event))
 }
 
-function shippingCostForProvince(province: string, isDiaspora: boolean): number {
-  const base = (() => {
-    switch (province) {
-      case "LA_HABANA":
-      case "MAYABEQUE":
-        return 5
-      case "ARTEMISA":
-      case "MATANZAS":
-        return 8
-      case "PINAR_DEL_RIO":
-        return 10
-      default:
-        return 12
-    }
-  })()
-  return isDiaspora ? base + 3 : base
-}
+// Shipping is now resolved by lib/checkout/shipping.ts — it queries
+// shipping_zones first and falls back to the legacy hardcoded numbers
+// if no zone matches.
 
 async function nextOrderNumber(): Promise<string> {
   const result = await db.execute(
@@ -264,11 +253,39 @@ export async function POST(request: Request) {
 
   const country = body.customer.country ?? "CU"
   const isDiaspora = country !== "CU"
-  const shippingCost = shippingCostForProvince(
-    body.shippingAddress.province,
+  const shipping = await resolveShippingCost({
+    provinceEnumValue: body.shippingAddress.province,
+    subtotal,
     isDiaspora,
+  })
+  const shippingCost = shipping.cost
+
+  // Coupon — validate before we create anything in DB so a bad code
+  // is a clean 400, not a half-created order.
+  let couponDiscount = 0
+  let couponShippingDiscount = 0
+  let appliedCouponId: string | null = null
+  let appliedCouponCode: string | null = null
+  if (body.couponCode) {
+    const result = await applyCoupon({
+      rawCode: body.couponCode,
+      subtotal,
+      shippingCost,
+    })
+    if (!result.ok) {
+      return fail(400, result.error)
+    }
+    couponDiscount = result.discount
+    couponShippingDiscount = result.shippingDiscount
+    appliedCouponId = result.couponId
+    appliedCouponCode = result.code
+  }
+
+  const discountTotal = couponDiscount + couponShippingDiscount
+  const total = Math.max(
+    0,
+    subtotal + shippingCost - couponDiscount - couponShippingDiscount,
   )
-  const total = subtotal + shippingCost
 
   // Preorder split: if any item is isPreorder, the customer pays a
   // configurable deposit upfront (in-stock items + shipping in full,
@@ -290,8 +307,16 @@ export async function POST(request: Request) {
     const depositPct = clampPct(
       Number(settingsRows["preorder.depositPercentage"] ?? 30),
     )
-    depositAmount =
-      stockSubtotal + (preorderSubtotal * depositPct) / 100 + shippingCost
+    // Discounts come off the deposit first (they apply to what the
+    // customer pays now, not to the balance owed on arrival).
+    const shippingPaidNow = Math.max(0, shippingCost - couponShippingDiscount)
+    depositAmount = Math.max(
+      0,
+      stockSubtotal +
+        (preorderSubtotal * depositPct) / 100 +
+        shippingPaidNow -
+        couponDiscount,
+    )
     balanceAmount = preorderSubtotal - (preorderSubtotal * depositPct) / 100
   }
 
@@ -349,13 +374,14 @@ export async function POST(request: Request) {
         fulfillmentStatus: "unfulfilled",
         subtotal: String(subtotal),
         shippingCost: String(shippingCost),
-        discountTotal: "0",
+        discountTotal: String(discountTotal),
         total: String(total),
         currency: "USD",
         shippingAddressId: addressId,
-        shippingMethod: "Mensajería propia",
+        shippingMethod: shipping.zoneName ?? "Mensajería propia",
         paymentMethod: body.paymentMethod,
         notesCustomer: body.notesCustomer ?? null,
+        couponCode: appliedCouponCode,
         depositAmount: depositAmount !== null ? String(depositAmount) : null,
         balanceAmount: balanceAmount !== null ? String(balanceAmount) : null,
         sourcingStatus: hasPreorder ? "not_started" : null,
@@ -374,6 +400,19 @@ export async function POST(request: Request) {
           subtotal: String(s.unitPrice * s.quantity),
         })),
       )
+
+      // Bump the coupon's used_count atomically — same transaction as
+      // the order so an order rollback can't leave it artificially
+      // counted.
+      if (appliedCouponId) {
+        await tx
+          .update(coupons)
+          .set({
+            usedCount: sql`${coupons.usedCount} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(coupons.id, appliedCouponId))
+      }
     })
 
     // 12. WhatsApp link.
