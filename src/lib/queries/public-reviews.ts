@@ -1,7 +1,7 @@
 import "server-only"
 import { and, desc, eq, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { reviews } from "@/lib/db/schema"
+import { products, reviews } from "@/lib/db/schema"
 
 export interface PublicReview {
   id: string
@@ -13,6 +13,12 @@ export interface PublicReview {
   adminResponse: string | null
   adminResponseAt: Date | null
   createdAt: Date
+}
+
+export interface PublicReviewWithProduct extends PublicReview {
+  productId: string | null
+  productName: string | null
+  productSlug: string | null
 }
 
 export interface ProductRatingSummary {
@@ -46,7 +52,7 @@ export async function getApprovedReviews(
     return rows.map((r) => ({
       id: r.id,
       customerName: r.customerName,
-      rating: r.rating,
+      rating: Number(r.rating),
       title: r.title,
       body: r.body,
       photoUrl: r.photoUrl,
@@ -57,6 +63,59 @@ export async function getApprovedReviews(
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
       console.warn("[public-reviews] DB unavailable in dev:", err)
+      return []
+    }
+    throw err
+  }
+}
+
+/**
+ * Every approved review across the catalog, newest first. Used by
+ * the /resenas page so customers can browse the wall of reviews.
+ * Joins to products so the card can deep-link to the item if any.
+ */
+export async function getAllApprovedReviews(
+  limit = 200,
+): Promise<PublicReviewWithProduct[]> {
+  try {
+    const rows = await db
+      .select({
+        id: reviews.id,
+        customerName: reviews.customerName,
+        rating: reviews.rating,
+        title: reviews.title,
+        body: reviews.body,
+        photoUrl: reviews.photoUrl,
+        adminResponse: reviews.adminResponse,
+        adminResponseAt: reviews.adminResponseAt,
+        createdAt: reviews.createdAt,
+        productId: reviews.productId,
+        productName: products.name,
+        productSlug: products.slug,
+      })
+      .from(reviews)
+      .leftJoin(products, eq(products.id, reviews.productId))
+      .where(eq(reviews.status, "approved"))
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit)
+
+    return rows.map((r) => ({
+      id: r.id,
+      customerName: r.customerName,
+      rating: Number(r.rating),
+      title: r.title,
+      body: r.body,
+      photoUrl: r.photoUrl,
+      adminResponse: r.adminResponse,
+      adminResponseAt: r.adminResponseAt,
+      createdAt: r.createdAt,
+      productId: r.productId,
+      productName: r.productName ?? null,
+      productSlug: r.productSlug ?? null,
+    }))
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[public-reviews] all-approved failed in dev:", err)
       return []
     }
     throw err
@@ -95,10 +154,16 @@ export async function getProductRatingSummary(
     let total = 0
     let weighted = 0
     for (const r of rows) {
-      const stars = Math.max(1, Math.min(5, r.rating)) as 1 | 2 | 3 | 4 | 5
-      distribution[stars] = r.count
+      const raw = Number(r.rating)
+      // Bucket half-star ratings into the nearest whole star for the
+      // 1-5 distribution bars.
+      const stars = Math.max(
+        1,
+        Math.min(5, Math.round(raw)),
+      ) as 1 | 2 | 3 | 4 | 5
+      distribution[stars] += r.count
       total += r.count
-      weighted += stars * r.count
+      weighted += raw * r.count
     }
     const averageRating = total === 0 ? 0 : weighted / total
 

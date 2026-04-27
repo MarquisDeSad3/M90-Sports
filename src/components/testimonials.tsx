@@ -159,23 +159,35 @@ export function Testimonials() {
               </div>
             </div>
 
-            <Link
-              href="/resenas/nueva"
-              className="group relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-full bg-[color:var(--color-red)] px-7 py-4 text-sm font-bold uppercase tracking-widest text-white"
-            >
-              <span className="absolute inset-0 -translate-x-full bg-[color:var(--color-cream)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0" />
-              <PencilLine
-                size={16}
-                className="relative z-10 transition-colors duration-500 group-hover:text-[color:var(--color-navy)]"
-              />
-              <span className="relative z-10 transition-colors duration-500 group-hover:text-[color:var(--color-navy)]">
-                Escribir reseña
-              </span>
-              <ArrowUpRight
-                size={16}
-                className="relative z-10 transition-all duration-500 group-hover:rotate-45 group-hover:text-[color:var(--color-navy)]"
-              />
-            </Link>
+            <div className="flex flex-col items-start gap-3 md:items-end">
+              <Link
+                href="/resenas/nueva"
+                className="group relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-full bg-[color:var(--color-red)] px-7 py-4 text-sm font-bold uppercase tracking-widest text-white"
+              >
+                <span className="absolute inset-0 -translate-x-full bg-[color:var(--color-cream)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0" />
+                <PencilLine
+                  size={16}
+                  className="relative z-10 transition-colors duration-500 group-hover:text-[color:var(--color-navy)]"
+                />
+                <span className="relative z-10 transition-colors duration-500 group-hover:text-[color:var(--color-navy)]">
+                  Escribir reseña
+                </span>
+                <ArrowUpRight
+                  size={16}
+                  className="relative z-10 transition-all duration-500 group-hover:rotate-45 group-hover:text-[color:var(--color-navy)]"
+                />
+              </Link>
+              <Link
+                href="/resenas"
+                className="group inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-cream)]/70 transition-colors hover:text-[color:var(--color-cream)]"
+              >
+                Ver todas las reseñas
+                <ArrowUpRight
+                  size={12}
+                  className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                />
+              </Link>
+            </div>
           </div>
         </div>
       </div>

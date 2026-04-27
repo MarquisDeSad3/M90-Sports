@@ -56,10 +56,6 @@ export function ReviewForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!productSlug) {
-      setError("Elige el producto que estás reseñando.")
-      return
-    }
     if (rating === 0) {
       setError("Toca las estrellas para puntuar.")
       return
@@ -79,7 +75,7 @@ export function ReviewForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          productSlug,
+          productSlug: productSlug ?? undefined,
           rating,
           customerName: name.trim(),
           title: title.trim() || undefined,
@@ -138,11 +134,30 @@ export function ReviewForm({
         aria-hidden
       />
 
-      {/* Product picker */}
+      {/* Product picker — optional */}
       <div className="rounded-2xl bg-white/85 p-5 ring-1 ring-[rgba(1,27,83,0.08)]">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#011b53]/65">
-          Producto que estás reseñando
-        </h3>
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#011b53]/65">
+            Producto <span className="lowercase">(opcional)</span>
+          </h3>
+          {productSlug && (
+            <button
+              type="button"
+              onClick={() => {
+                setProductSlug(null)
+                setProductSearch("")
+                setPickerOpen(false)
+              }}
+              className="text-[11px] font-semibold uppercase tracking-wider text-[#980e21] hover:underline"
+            >
+              Quitar
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-[11px] text-[#011b53]/55">
+          Si tu reseña es de un producto específico, búscalo. Si no, déjalo
+          en blanco — queda como una reseña general de M90.
+        </p>
         {selectedProduct && !pickerOpen ? (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-[#011b53] bg-[#011b53]/5 px-3 py-2">
             <div className="flex flex-col gap-0.5 min-w-0">
@@ -176,74 +191,95 @@ export function ReviewForm({
                 onChange={(e) => setProductSearch(e.target.value)}
                 placeholder="Busca el producto que compraste…"
                 className="h-10 w-full rounded-lg border border-[rgba(1,27,83,0.2)] bg-white pl-10 pr-3 text-sm text-[#011b53] outline-none focus:border-[#011b53]"
-                autoFocus
               />
             </div>
-            <ul className="max-h-64 overflow-y-auto rounded-lg border border-[rgba(1,27,83,0.1)] bg-white">
-              {filteredProducts.length === 0 ? (
-                <li className="px-3 py-4 text-center text-xs text-[#011b53]/55">
-                  Sin resultados.
-                </li>
-              ) : (
-                filteredProducts.map((p) => (
-                  <li key={p.slug}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProductSlug(p.slug)
-                        setPickerOpen(false)
-                      }}
-                      className={cn(
-                        "flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-[#011b53]/5",
-                        p.slug === productSlug && "bg-[#011b53]/5",
-                      )}
-                    >
-                      <span className="line-clamp-1 text-sm font-medium text-[#011b53]">
-                        {p.name}
-                      </span>
-                      {p.team && (
-                        <span className="text-[11px] text-[#011b53]/55">
-                          {p.team}
-                        </span>
-                      )}
-                    </button>
+            {productSearch.trim().length > 0 && (
+              <ul className="max-h-64 overflow-y-auto rounded-lg border border-[rgba(1,27,83,0.1)] bg-white">
+                {filteredProducts.length === 0 ? (
+                  <li className="px-3 py-4 text-center text-xs text-[#011b53]/55">
+                    Sin resultados.
                   </li>
-                ))
-              )}
-            </ul>
+                ) : (
+                  filteredProducts.map((p) => (
+                    <li key={p.slug}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductSlug(p.slug)
+                          setPickerOpen(false)
+                        }}
+                        className={cn(
+                          "flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-[#011b53]/5",
+                          p.slug === productSlug && "bg-[#011b53]/5",
+                        )}
+                      >
+                        <span className="line-clamp-1 text-sm font-medium text-[#011b53]">
+                          {p.name}
+                        </span>
+                        {p.team && (
+                          <span className="text-[11px] text-[#011b53]/55">
+                            {p.team}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            )}
           </div>
         )}
       </div>
 
-      {/* Rating */}
+      {/* Rating with half-star precision */}
       <div className="rounded-2xl bg-white/85 p-5 ring-1 ring-[rgba(1,27,83,0.08)]">
         <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#011b53]/65">
           Tu puntuación
         </h3>
         <div
-          className="mt-2 flex items-center gap-1"
+          className="mt-2 flex items-center gap-0.5"
           onMouseLeave={() => setHoverRating(0)}
         >
           {[1, 2, 3, 4, 5].map((i) => {
-            const lit = (hoverRating || rating) >= i
+            const display = hoverRating || rating
             return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setRating(i)}
-                onMouseEnter={() => setHoverRating(i)}
-                aria-label={`${i} ${i === 1 ? "estrella" : "estrellas"}`}
-                className="grid size-12 place-items-center rounded-full transition-transform hover:scale-110"
-              >
+              <div key={i} className="relative size-12">
+                {/* Background outline star */}
                 <Star
-                  className={cn(
-                    "size-9 transition-colors",
-                    lit
-                      ? "fill-amber-400 stroke-amber-500"
-                      : "fill-transparent stroke-[#011b53]/30",
-                  )}
+                  className="absolute inset-1 size-9 fill-transparent stroke-[#011b53]/25"
+                  strokeWidth={1.5}
+                  aria-hidden
                 />
-              </button>
+                {/* Foreground filled star, clipped to current rating */}
+                <Star
+                  className="absolute inset-1 size-9 fill-amber-400 stroke-amber-500 transition-[clip-path]"
+                  strokeWidth={1.5}
+                  style={{
+                    clipPath:
+                      display >= i
+                        ? "inset(0 0 0 0)"
+                        : display >= i - 0.5
+                          ? "inset(0 50% 0 0)"
+                          : "inset(0 100% 0 0)",
+                  }}
+                  aria-hidden
+                />
+                {/* Two click zones overlay: left half = i-0.5, right = i */}
+                <button
+                  type="button"
+                  onClick={() => setRating(i - 0.5)}
+                  onMouseEnter={() => setHoverRating(i - 0.5)}
+                  aria-label={`${i - 0.5} estrellas`}
+                  className="absolute inset-y-0 left-0 w-1/2"
+                />
+                <button
+                  type="button"
+                  onClick={() => setRating(i)}
+                  onMouseEnter={() => setHoverRating(i)}
+                  aria-label={`${i} ${i === 1 ? "estrella" : "estrellas"}`}
+                  className="absolute inset-y-0 right-0 w-1/2"
+                />
+              </div>
             )
           })}
           {rating > 0 && (
@@ -252,6 +288,9 @@ export function ReviewForm({
             </span>
           )}
         </div>
+        <p className="mt-1 text-[11px] text-[#011b53]/55">
+          Toca el lado izquierdo de una estrella para medio punto.
+        </p>
       </div>
 
       {/* Identity */}

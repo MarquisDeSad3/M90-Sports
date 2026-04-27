@@ -57,13 +57,13 @@ export async function getReviews(
 
     return rows.map((r): MockReview => ({
       id: r.id,
-      productId: r.productId,
-      productName: r.productName ?? "—",
+      productId: r.productId ?? "",
+      productName: r.productName ?? "Reseña general",
       team: r.productTeam ?? "",
       customerName: r.customerName,
       customerCity: undefined,
       customerCountry: "CU",
-      rating: r.rating,
+      rating: Number(r.rating),
       body: r.body,
       hasPhoto: !!r.photoUrl,
       photoUrl: r.photoUrl ?? undefined,

@@ -155,23 +155,34 @@ function Stars({
       className="inline-flex items-center gap-0.5"
       aria-label={`${value} de 5 estrellas`}
     >
-      {[1, 2, 3, 4, 5].map((i) => {
-        // Half-star handling: if the rating crosses this position by
-        // 0.3+ we render filled, otherwise outline. Keeps it readable
-        // without dragging in an SVG mask for proper half stars.
-        const filled = value >= i - 0.3
-        return (
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} className={cn("relative inline-block", dimensions)}>
           <Star
-            key={i}
             className={cn(
+              "absolute inset-0 fill-transparent stroke-[#011b53]/25",
               dimensions,
-              filled
-                ? "fill-amber-400 stroke-amber-500"
-                : "fill-transparent stroke-[#011b53]/30",
             )}
+            strokeWidth={1.5}
+            aria-hidden
           />
-        )
-      })}
+          <Star
+            className={cn(
+              "absolute inset-0 fill-amber-400 stroke-amber-500",
+              dimensions,
+            )}
+            strokeWidth={1.5}
+            style={{
+              clipPath:
+                value >= i
+                  ? "inset(0 0 0 0)"
+                  : value >= i - 0.5
+                    ? "inset(0 50% 0 0)"
+                    : "inset(0 100% 0 0)",
+            }}
+            aria-hidden
+          />
+        </span>
+      ))}
     </span>
   )
 }

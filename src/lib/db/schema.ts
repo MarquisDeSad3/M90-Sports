@@ -526,11 +526,15 @@ export const reviews = pgTable(
   "reviews",
   {
     id: id("rev"),
-    productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+    // Optional: customers can leave a general M90 review without picking
+    // a specific product. Per-product pages filter `productId IS NOT NULL`;
+    // the all-reviews page shows both kinds.
+    productId: text("product_id").references(() => products.id, { onDelete: "cascade" }),
     orderId: text("order_id").references(() => orders.id, { onDelete: "set null" }),
     customerId: text("customer_id").references(() => customers.id, { onDelete: "set null" }),
     customerName: text("customer_name").notNull(),
-    rating: integer("rating").notNull(),
+    // numeric(2,1) so we can store half-star ratings (3.5, 4.5...).
+    rating: numeric("rating", { precision: 2, scale: 1 }).notNull(),
     title: text("title"),
     body: text("body").notNull(),
     photoUrl: text("photo_url"),

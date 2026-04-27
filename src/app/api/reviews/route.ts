@@ -35,8 +35,22 @@ function getClientIp(req: NextRequest): string {
 
 const reviewSchema = z
   .object({
-    productSlug: z.string().trim().min(1).max(120),
-    rating: z.coerce.number().int().min(1).max(5),
+    // Optional: empty string or missing → general M90 review (no
+    // product link). When present, must match an existing product.
+    productSlug: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    // Half-star ratings 1, 1.5, 2, ... 5. Must round to a 0.5 step.
+    rating: z.coerce
+      .number()
+      .min(0.5)
+      .max(5)
+      .refine((n) => Math.abs(n * 2 - Math.round(n * 2)) < 0.001, {
+        message: "Puntuación inválida",
+      }),
     customerName: z.string().trim().min(2).max(60),
     title: z
       .string()
@@ -51,7 +65,6 @@ const reviewSchema = z
       .max(40)
       .optional()
       .or(z.literal("").transform(() => undefined)),
-    // Honeypot — must be empty.
     _hp: z.string().max(0).optional().or(z.literal("")),
   })
   .strict()
@@ -88,21 +101,25 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data
 
-  // Find the product. Must exist + not deleted (we accept draft/preorder
-  // too — Ever can decide on approval whether the review fits).
-  const productRows = await db
-    .select({ id: products.id })
-    .from(products)
-    .where(
-      and(isNull(products.deletedAt), eq(products.slug, data.productSlug)),
-    )
-    .limit(1)
-  const product = productRows[0]
-  if (!product) {
-    return NextResponse.json(
-      { error: "Producto no encontrado." },
-      { status: 404 },
-    )
+  // Optional product link. If the customer didn't pick one, the review
+  // is a "general M90" review and goes into the unlinked pool.
+  let productId: string | null = null
+  if (data.productSlug) {
+    const productRows = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(
+        and(isNull(products.deletedAt), eq(products.slug, data.productSlug)),
+      )
+      .limit(1)
+    const product = productRows[0]
+    if (!product) {
+      return NextResponse.json(
+        { error: "Producto no encontrado." },
+        { status: 404 },
+      )
+    }
+    productId = product.id
   }
 
   // Optional: tie back to the order + customer if the number is valid.
@@ -145,11 +162,11 @@ export async function POST(req: NextRequest) {
   try {
     await db.insert(reviews).values({
       id: `rev_${createId()}`,
-      productId: product.id,
+      productId,
       orderId,
       customerId,
       customerName: data.customerName,
-      rating: data.rating,
+      rating: String(data.rating),
       title: data.title ?? null,
       body: data.body,
       photoUrl: null,
