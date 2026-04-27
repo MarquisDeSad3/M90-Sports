@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
+import { ArrowUpRight } from "lucide-react"
 import { ProductCardCart } from "./product-card-cart"
 import { cn } from "@/lib/utils"
 import type {
@@ -26,56 +28,36 @@ export function StoreSection({
 }) {
   const [activeId, setActiveId] = React.useState<string>(ALL_TAB.id)
 
-  // Identify the "Por encargo" parent (if it exists). Active when its
-  // tab is the selected one — we then show every isPreorder product
-  // regardless of which subcategory it belongs to.
+  // "Por encargo" lives on its own page (/por-encargo) — clicking the
+  // tab navigates instead of filtering. We render it as a link below.
   const preorderParent = React.useMemo(
     () => categories.find((c) => c.slug === "por-encargo") ?? null,
     [categories],
   )
-  const isPreorderTab =
-    preorderParent !== null && activeId === preorderParent.id
 
-  // Featured row: never includes preorder products — they belong in
-  // their own tab so the front page stays focused on what's in stock.
   const featured = React.useMemo(
-    () =>
-      products
-        .filter((p) => p.featured && !p.isPreorder)
-        .slice(0, FEATURED_LIMIT),
+    () => products.filter((p) => p.featured).slice(0, FEATURED_LIMIT),
     [products],
   )
 
   const filteredAll = React.useMemo(() => {
-    if (isPreorderTab) return products.filter((p) => p.isPreorder)
-    if (activeId === ALL_TAB.id) return products.filter((p) => !p.isPreorder)
-    return products.filter(
-      (p) => !p.isPreorder && p.categoryIds.includes(activeId),
-    )
-  }, [products, activeId, isPreorderTab])
+    if (activeId === ALL_TAB.id) return products
+    return products.filter((p) => p.categoryIds.includes(activeId))
+  }, [products, activeId])
 
   const featuredIds = new Set(featured.map((p) => p.id))
   const restAll = filteredAll.filter((p) => !featuredIds.has(p.id))
   const showFeaturedRow = activeId === ALL_TAB.id && featured.length > 0
   const showRest = activeId !== ALL_TAB.id || filteredAll.length > FEATURED_LIMIT
 
-  // Tab list: "Todo" first, then top-level categories (parentId IS NULL)
-  // in configured order. Subcategories of "Por encargo" are hidden —
-  // they live under that single tab so the storefront stays clean.
+  // Inline tabs: "Todo" + top-level catalog categories that have
+  // products. Excludes the "Por encargo" parent — that tab is rendered
+  // separately as a link to /por-encargo.
   const tabs: Array<{ id: string; label: string }> = [
     { id: ALL_TAB.id, label: ALL_TAB.label },
     ...categories
-      .filter((c) => c.parentId === null)
-      .filter((c) => {
-        // "Por encargo" parent has no products of its own, but it's
-        // valid as long as ANY product has isPreorder=true.
-        if (c.slug === "por-encargo") {
-          return products.some((p) => p.isPreorder)
-        }
-        return products.some(
-          (p) => !p.isPreorder && p.categoryIds.includes(c.id),
-        )
-      })
+      .filter((c) => c.parentId === null && c.slug !== "por-encargo")
+      .filter((c) => products.some((p) => p.categoryIds.includes(c.id)))
       .map((c) => ({ id: c.id, label: c.name })),
   ]
 
@@ -138,6 +120,18 @@ export function StoreSection({
               </button>
             )
           })}
+          {/* Standalone link — sends visitors to the dedicated preorder
+              catalog instead of filtering inline. Visually distinct so
+              it reads as "explore more" rather than another local tab. */}
+          {preorderParent && (
+            <Link
+              href="/por-encargo"
+              className="group/poe inline-flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-[#980e21]/60 bg-white/40 px-4 py-2 text-sm font-semibold text-[#980e21] transition-all hover:-translate-y-0.5 hover:border-[#980e21] hover:bg-white/80"
+            >
+              {preorderParent.name}
+              <ArrowUpRight className="size-3.5 transition-transform group-hover/poe:rotate-12" />
+            </Link>
+          )}
         </div>
 
         {/* Featured row (only on "Todo") */}
