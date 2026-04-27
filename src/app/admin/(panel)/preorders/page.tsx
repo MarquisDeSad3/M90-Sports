@@ -21,7 +21,7 @@ export default async function PreordersPage() {
   }
 
   const [products, allCategories] = await Promise.all([
-    getProducts({ limit: 5000, isPreorder: true }),
+    getProducts({ limit: 15000, isPreorder: true }),
     getCategories(),
   ])
 
