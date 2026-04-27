@@ -5,7 +5,15 @@ import { ArrowLeft, Sparkles, Truck } from "lucide-react"
 import { Nav } from "@/components/nav"
 import { ProductImage } from "@/components/admin/product-image"
 import { AddToCartForm } from "@/components/public/add-to-cart-form"
+import {
+  ProductReviews,
+  RatingPill,
+} from "@/components/public/product-reviews"
 import { getPublicProduct } from "@/lib/queries/public-products"
+import {
+  getApprovedReviews,
+  getProductRatingSummary,
+} from "@/lib/queries/public-reviews"
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -64,6 +72,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getPublicProduct(slug)
   if (!product) notFound()
 
+  const [reviews, ratingSummary] = await Promise.all([
+    getApprovedReviews(product.id),
+    getProductRatingSummary(product.id),
+  ])
+
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0)
   const availability =
     totalStock > 0 || product.isPreorder
@@ -98,6 +111,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
     productLd.image = product.primaryImageUrl.startsWith("http")
       ? product.primaryImageUrl
       : `${SITE_URL}${product.primaryImageUrl}`
+  }
+  if (ratingSummary.reviewCount > 0) {
+    // Google rich results show stars under the product link in search
+    // when AggregateRating is present.
+    productLd.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: ratingSummary.averageRating.toFixed(1),
+      reviewCount: ratingSummary.reviewCount,
+      bestRating: "5",
+      worstRating: "1",
+    }
   }
 
   return (
@@ -167,19 +191,22 @@ export default async function ProductDetailPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Price */}
-          <div className="flex items-baseline gap-3">
-            <span
-              className="font-display text-4xl tabular-nums md:text-5xl"
-              style={{ color: M90_NAVY }}
-            >
-              ${product.basePrice.toFixed(0)}
-            </span>
-            {product.compareAtPrice && (
-              <span className="text-lg text-[#011b53]/50 line-through tabular-nums">
-                ${product.compareAtPrice.toFixed(0)}
+          {/* Price + rating */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline gap-3">
+              <span
+                className="font-display text-4xl tabular-nums md:text-5xl"
+                style={{ color: M90_NAVY }}
+              >
+                ${product.basePrice.toFixed(0)}
               </span>
-            )}
+              {product.compareAtPrice && (
+                <span className="text-lg text-[#011b53]/50 line-through tabular-nums">
+                  ${product.compareAtPrice.toFixed(0)}
+                </span>
+              )}
+            </div>
+            <RatingPill summary={ratingSummary} size="sm" />
           </div>
 
           {/* Description */}
@@ -230,6 +257,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Reviews — renders nothing when there are no approved reviews */}
+      <div className="mx-auto max-w-6xl px-5 pb-20 md:px-8">
+        <ProductReviews reviews={reviews} summary={ratingSummary} />
       </div>
     </main>
   )
