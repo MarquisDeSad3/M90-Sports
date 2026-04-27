@@ -43,7 +43,6 @@ import {
   type MockProduct,
   type ProductStatus,
 } from "@/lib/mock-data"
-import type { PreorderPickerItem } from "@/lib/queries/preorder-picker"
 import { cn } from "@/lib/utils"
 import {
   bulkAssignCategoryAction,
@@ -66,7 +65,6 @@ export interface ProductsListClientProps {
     outOfStock: number
   }
   categories: Array<{ id: string; name: string; productCount: number }>
-  preorderPool: PreorderPickerItem[]
 }
 
 const CATEGORY_ALL = "__all__"
@@ -75,7 +73,6 @@ export function ProductsListClient({
   products,
   counts,
   categories,
-  preorderPool,
 }: ProductsListClientProps) {
   const router = useRouter()
   const [search, setSearch] = React.useState("")
@@ -316,15 +313,14 @@ export function ProductsListClient({
 
       {/* "Add from preorders" affordance — appears when a real category
           chip is active so Ever has somewhere to drop the new items. */}
-      {activeCategory && preorderPool.length > 0 && (
+      {activeCategory && (
         <div className="flex items-center justify-between rounded-lg border border-dashed border-primary/30 bg-primary/5 px-3 py-2">
           <div className="text-xs text-muted-foreground">
             ¿Faltan productos en{" "}
             <span className="font-semibold text-foreground">
               {activeCategory.name}
             </span>
-            ? Trae desde el pool de Por encargo ({preorderPool.length}{" "}
-            disponibles).
+            ? Trae desde el catálogo o desde Por encargo.
           </div>
           <Button
             size="sm"
@@ -333,7 +329,7 @@ export function ProductsListClient({
             className="gap-1.5"
           >
             <Plus className="size-3.5" />
-            Agregar desde Por encargo
+            Agregar productos
           </Button>
         </div>
       )}
@@ -840,7 +836,6 @@ export function ProductsListClient({
         <PreorderPickerDialog
           open={pickerOpen}
           onOpenChange={setPickerOpen}
-          pool={preorderPool}
           targetCategoryId={activeCategory.id}
           targetCategoryName={activeCategory.name}
         />

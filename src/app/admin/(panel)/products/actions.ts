@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { and, eq, like } from "drizzle-orm"
+import { and, asc, desc, eq, ilike, inArray, isNull, like, or, sql } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
 import {
@@ -295,8 +295,6 @@ export async function deleteProduct(
 // of N requests. All require manager+; cost-bearing data isn't touched here.
 // ---------------------------------------------------------------------------
 
-import { inArray } from "drizzle-orm"
-
 export type BulkResult = { ok: true; affected: number } | { ok: false; error: string }
 
 /**
@@ -535,5 +533,241 @@ export async function bulkUnassignCategoryAction(
     return { ok: true, affected: result.length }
   } catch {
     return { ok: false, error: "No se pudo quitar la categoría." }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Picker search — server-side, paginated, replaces the heavy 9000-row
+// preload that used to ship in /admin/products page payload.
+// ---------------------------------------------------------------------------
+
+export interface PickerProduct {
+  id: string
+  name: string
+  team: string | null
+  basePrice: number
+  primaryImageUrl: string | null
+  status: string
+  isPreorder: boolean
+}
+
+export type PickerKind = "preorder" | "in_stock" | "both"
+
+export interface PickerSearchResult {
+  ok: true
+  products: PickerProduct[]
+  total: number
+}
+
+/**
+ * Search products for the bulk-assign-to-category dialog. Returns
+ * just the requested page (default 30) plus the filtered total so
+ * the client can show pagination without ever loading the full
+ * catalog.
+ *
+ * `kind` controls which slice of the catalog the search runs over:
+ *   - "preorder" — isPreorder=true (the by-pedido pool)
+ *   - "in_stock" — isPreorder=false (the regular catalog)
+ *   - "both" — every product
+ *
+ * Used by the picker on /admin/products and /admin/preorders, but
+ * the server action stays in this module because it lives next to
+ * the bulk-action sister functions.
+ */
+export async function searchProductsForPickerAction({
+  search,
+  kind,
+  offset,
+  limit,
+}: {
+  search: string
+  kind: PickerKind
+  offset: number
+  limit: number
+}): Promise<PickerSearchResult | { ok: false; error: string }> {
+  try {
+    await requireAdminRole("manager")
+  } catch {
+    return { ok: false, error: "Sin permisos." }
+  }
+
+  const safeLimit = Math.max(1, Math.min(50, limit || 30))
+  const safeOffset = Math.max(0, offset || 0)
+
+  const conditions = [isNull(products.deletedAt)]
+  if (kind === "preorder") conditions.push(eq(products.isPreorder, true))
+  else if (kind === "in_stock") conditions.push(eq(products.isPreorder, false))
+  // "both" → no isPreorder filter
+
+  const trimmed = (search ?? "").trim()
+  if (trimmed.length > 0) {
+    const q = `%${trimmed}%`
+    conditions.push(
+      or(
+        ilike(products.name, q),
+        ilike(products.team, q),
+        ilike(products.playerName, q),
+        ilike(products.slug, q),
+      )!,
+    )
+  }
+
+  const where = and(...conditions)
+
+  try {
+    const [rows, totalRow] = await Promise.all([
+      db
+        .select({
+          id: products.id,
+          name: products.name,
+          team: products.team,
+          basePrice: products.basePrice,
+          status: products.status,
+          isPreorder: products.isPreorder,
+        })
+        .from(products)
+        .where(where)
+        .orderBy(desc(products.featured), asc(products.name))
+        .limit(safeLimit)
+        .offset(safeOffset),
+      db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(products)
+        .where(where),
+    ])
+
+    if (rows.length === 0) {
+      return { ok: true, products: [], total: totalRow[0]?.count ?? 0 }
+    }
+
+    const ids = rows.map((r) => r.id)
+    const imgs = await db
+      .select({
+        productId: productImages.productId,
+        url: productImages.url,
+      })
+      .from(productImages)
+      .where(
+        and(
+          inArray(productImages.productId, ids),
+          eq(productImages.isPrimary, true),
+        ),
+      )
+    const imgMap = new Map<string, string>()
+    for (const img of imgs) imgMap.set(img.productId, img.url)
+
+    return {
+      ok: true,
+      products: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        team: r.team,
+        basePrice: Number(r.basePrice),
+        primaryImageUrl: imgMap.get(r.id) ?? null,
+        status: r.status,
+        isPreorder: r.isPreorder,
+      })),
+      total: totalRow[0]?.count ?? 0,
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "unknown"
+    console.error("[picker] search failed:", msg)
+    return { ok: false, error: "No se pudo buscar productos." }
+  }
+}
+
+/**
+ * Bulk-assign to category, but smart about kind: any selected ids
+ * that are still flagged `is_preorder=true` get the full promote
+ * treatment (status→published, drop encargo-* tags, then add the
+ * target). In-stock products just get the new tag.
+ *
+ * Lets the picker mix preorder + in-stock products in a single
+ * apply without the caller needing to split them.
+ */
+export async function bulkAssignFromPickerAction(
+  productIds: string[],
+  categoryId: string,
+): Promise<BulkResult> {
+  await requireAdminRole("manager")
+  const err = validateIds(productIds)
+  if (err) return { ok: false, error: err }
+  if (typeof categoryId !== "string" || !categoryId.startsWith("cat_")) {
+    return { ok: false, error: "Categoría inválida." }
+  }
+
+  try {
+    // Split by kind.
+    const kindRows = await db
+      .select({ id: products.id, isPreorder: products.isPreorder })
+      .from(products)
+      .where(inArray(products.id, productIds))
+    const preorderIds = kindRows
+      .filter((r) => r.isPreorder)
+      .map((r) => r.id)
+    const inStockIds = kindRows
+      .filter((r) => !r.isPreorder)
+      .map((r) => r.id)
+
+    // Promote preorder products: flip flags + scrub encargo-* + add target.
+    if (preorderIds.length > 0) {
+      const encargoCats = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(like(categories.slug, "encargo-%"))
+      const encargoIds = encargoCats.map((c) => c.id)
+
+      await db
+        .update(products)
+        .set({
+          isPreorder: false,
+          status: "published",
+          updatedAt: new Date(),
+        })
+        .where(inArray(products.id, preorderIds))
+
+      if (encargoIds.length > 0) {
+        await db
+          .delete(productCategories)
+          .where(
+            and(
+              inArray(productCategories.productId, preorderIds),
+              inArray(productCategories.categoryId, encargoIds),
+            ),
+          )
+      }
+    }
+
+    // Add the target category to all selected products, skipping rows
+    // that are already there (M:N PK would otherwise blow up).
+    const existing = await db
+      .select({ productId: productCategories.productId })
+      .from(productCategories)
+      .where(
+        and(
+          inArray(productCategories.productId, productIds),
+          eq(productCategories.categoryId, categoryId),
+        ),
+      )
+    const have = new Set(existing.map((e) => e.productId))
+    const missing = productIds.filter((id) => !have.has(id))
+    if (missing.length > 0) {
+      await db
+        .insert(productCategories)
+        .values(missing.map((productId) => ({ productId, categoryId })))
+    }
+
+    revalidatePath("/admin/products")
+    revalidatePath("/admin/preorders")
+    revalidatePath("/admin/categories")
+    revalidatePath("/")
+    return {
+      ok: true,
+      affected: preorderIds.length + missing.length,
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "unknown"
+    console.error("[picker] bulk-assign failed:", msg)
+    return { ok: false, error: "No se pudo asignar la categoría." }
   }
 }
