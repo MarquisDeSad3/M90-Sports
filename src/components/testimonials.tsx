@@ -8,8 +8,9 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
-import { Star, MessageCircle, ArrowUpRight, ShieldCheck } from "lucide-react";
-import { asset, whatsappUrl } from "@/lib/utils";
+import Link from "next/link";
+import { Star, ArrowUpRight, PencilLine, ShieldCheck } from "lucide-react";
+import { asset } from "@/lib/utils";
 
 type Review = {
   id: string;
@@ -78,16 +79,6 @@ const REVIEWS: Review[] = [
     product: "Lakers Kobe #24",
   },
 ];
-
-const submitTemplate = `Hola M90, quiero dejar una reseña:
-
-👤 Mi nombre:
-📍 Mi provincia:
-👕 Camiseta que compré:
-⭐ Puntuación (1-5):
-
-📝 Mi experiencia:
-`;
 
 export function Testimonials() {
   // NOTE: no overflow-hidden on this section — it would break position:sticky
@@ -159,8 +150,8 @@ export function Testimonials() {
                 Deja tu reseña.
               </h3>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-[color:var(--color-cream)]/70">
-                Llena la plantilla por WhatsApp — sin cuentas, sin formularios.
-                La revisamos y si encaja la publicamos aquí en menos de 48h.
+                Llena el form en menos de un minuto — sin cuenta. La revisamos
+                y si encaja la publicamos aquí en menos de 48h.
               </p>
               <div className="mt-4 inline-flex items-center gap-2 text-[11px] uppercase tracking-widest text-[color:var(--color-cream)]/55">
                 <ShieldCheck size={14} className="text-[color:var(--color-green)]" />
@@ -168,14 +159,12 @@ export function Testimonials() {
               </div>
             </div>
 
-            <a
-              href={whatsappUrl(submitTemplate)}
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              href="/resenas/nueva"
               className="group relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-full bg-[color:var(--color-red)] px-7 py-4 text-sm font-bold uppercase tracking-widest text-white"
             >
               <span className="absolute inset-0 -translate-x-full bg-[color:var(--color-cream)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0" />
-              <MessageCircle
+              <PencilLine
                 size={16}
                 className="relative z-10 transition-colors duration-500 group-hover:text-[color:var(--color-navy)]"
               />
@@ -186,7 +175,7 @@ export function Testimonials() {
                 size={16}
                 className="relative z-10 transition-all duration-500 group-hover:rotate-45 group-hover:text-[color:var(--color-navy)]"
               />
-            </a>
+            </Link>
           </div>
         </div>
       </div>

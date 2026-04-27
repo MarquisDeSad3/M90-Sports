@@ -259,9 +259,27 @@ export default async function ProductDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Reviews — renders nothing when there are no approved reviews */}
+      {/* Reviews — renders the section if there are reviews; either way
+          we surface a "Deja tu reseña" CTA so the customer can write one. */}
       <div className="mx-auto max-w-6xl px-5 pb-20 md:px-8">
         <ProductReviews reviews={reviews} summary={ratingSummary} />
+        <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl bg-white/85 p-6 ring-1 ring-[rgba(1,27,83,0.08)] md:flex-row md:justify-between">
+          <div className="flex flex-col gap-0.5 text-center md:text-left">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#011b53]/65">
+              ¿Compraste esta camiseta?
+            </span>
+            <span className="text-sm text-[#011b53]/80">
+              Cuéntale al resto cómo te llegó. Tu reseña ayuda a otros a comprar
+              con confianza.
+            </span>
+          </div>
+          <Link
+            href={`/resenas/nueva?producto=${encodeURIComponent(product.slug)}`}
+            className="inline-flex items-center gap-2 rounded-full bg-[#011b53] px-5 py-2.5 text-xs font-semibold text-[#efd9a3] transition-transform hover:-translate-y-0.5"
+          >
+            Escribir reseña
+          </Link>
+        </div>
       </div>
     </main>
   )
