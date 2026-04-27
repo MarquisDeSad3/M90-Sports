@@ -3,25 +3,7 @@
 import { motion } from "framer-motion";
 import { MapPin, ShieldCheck, Clock, Banknote } from "lucide-react";
 import { asset } from "@/lib/utils";
-
-const PROVINCIAS = [
-  { name: "La Habana", days: "24h", highlight: true },
-  { name: "Artemisa", days: "48h" },
-  { name: "Mayabeque", days: "48h" },
-  { name: "Matanzas", days: "2–3d" },
-  { name: "Pinar del Río", days: "3d" },
-  { name: "Villa Clara", days: "3d" },
-  { name: "Cienfuegos", days: "3d" },
-  { name: "Sancti Spíritus", days: "3–4d" },
-  { name: "Ciego de Ávila", days: "3–4d" },
-  { name: "Camagüey", days: "4d" },
-  { name: "Las Tunas", days: "4–5d" },
-  { name: "Holguín", days: "4–5d" },
-  { name: "Granma", days: "5d" },
-  { name: "Santiago", days: "5d" },
-  { name: "Guantánamo", days: "5–6d" },
-  { name: "Isla de la Juventud", days: "5–7d" },
-];
+import type { PublicShippingZone } from "@/lib/queries/public-shipping";
 
 const PAYMENTS = [
   { name: "Transfermóvil", icon: "TM" },
@@ -30,7 +12,11 @@ const PAYMENTS = [
   { name: "USD efectivo", icon: "$" },
 ];
 
-export function Shipping() {
+interface ShippingProps {
+  zones: PublicShippingZone[];
+}
+
+export function Shipping({ zones }: ShippingProps) {
   return (
     <section
       id="envios"
@@ -53,36 +39,43 @@ export function Shipping() {
               usamos operadores con seguimiento real. Sin promesas vacías.
             </p>
 
-            <div className="mt-10 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {PROVINCIAS.map((p, i) => (
-                <motion.div
-                  key={p.name}
-                  initial={{ opacity: 0, y: 14 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.02, duration: 0.4 }}
-                  className={`group flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-colors ${
-                    p.highlight
-                      ? "border-[color:var(--color-red)] bg-[color:var(--color-red)] text-white"
-                      : "border-[color:var(--color-navy)]/10 bg-white/60 text-[color:var(--color-navy)] hover:border-[color:var(--color-navy)]/40"
-                  }`}
-                >
-                  <span className="flex items-center gap-2 font-semibold">
-                    <MapPin size={12} />
-                    {p.name}
-                  </span>
-                  <span
-                    className={`font-display text-lg italic ${
+            {zones.length === 0 ? (
+              <p className="mt-10 rounded-xl border border-dashed border-[color:var(--color-navy)]/20 bg-white/40 p-6 text-sm text-[color:var(--color-navy)]/65">
+                Todavía no configuramos las zonas de envío. Escríbenos por
+                WhatsApp y te confirmamos la entrega para tu provincia.
+              </p>
+            ) : (
+              <div className="mt-10 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {zones.map((p, i) => (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, y: 14 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.02, duration: 0.4 }}
+                    className={`group flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-colors ${
                       p.highlight
-                        ? "text-[color:var(--color-cream)]"
-                        : "text-[color:var(--color-red)]"
+                        ? "border-[color:var(--color-red)] bg-[color:var(--color-red)] text-white"
+                        : "border-[color:var(--color-navy)]/10 bg-white/60 text-[color:var(--color-navy)] hover:border-[color:var(--color-navy)]/40"
                     }`}
                   >
-                    {p.days}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <MapPin size={12} />
+                      {p.name}
+                    </span>
+                    <span
+                      className={`font-display text-lg italic ${
+                        p.highlight
+                          ? "text-[color:var(--color-cream)]"
+                          : "text-[color:var(--color-red)]"
+                      }`}
+                    >
+                      {p.daysLabel}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right: trust + payments */}

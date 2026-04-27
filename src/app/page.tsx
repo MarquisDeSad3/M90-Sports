@@ -13,6 +13,7 @@ import {
   getPublicCategories,
   getPublicProducts,
 } from "@/lib/queries/public-products"
+import { getPublicShippingZones } from "@/lib/queries/public-shipping"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -50,9 +51,10 @@ const orgLd = {
 }
 
 export default async function HomePage() {
-  const [products, categories] = await Promise.all([
+  const [products, categories, shippingZones] = await Promise.all([
     getPublicProducts(),
     getPublicCategories(),
+    getPublicShippingZones(),
   ])
 
   return (
@@ -67,7 +69,7 @@ export default async function HomePage() {
         <Categories />
         <StoreSection products={products} categories={categories} />
         <HowToBuy />
-        <Shipping />
+        <Shipping zones={shippingZones} />
         <Testimonials />
         <Faq />
       </main>
