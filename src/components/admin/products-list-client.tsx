@@ -35,6 +35,7 @@ import {
 import { ProductImage } from "@/components/admin/product-image"
 import { ProductStatusBadge } from "@/components/admin/product-status-badge"
 import { StockPill } from "@/components/admin/stock-pill"
+import { PreorderPickerDialog } from "@/components/admin/preorder-picker-dialog"
 import {
   getProductTotalStock,
   LEAGUE_LABEL,
@@ -42,6 +43,7 @@ import {
   type MockProduct,
   type ProductStatus,
 } from "@/lib/mock-data"
+import type { PreorderPickerItem } from "@/lib/queries/preorder-picker"
 import { cn } from "@/lib/utils"
 import {
   bulkAssignCategoryAction,
@@ -64,6 +66,7 @@ export interface ProductsListClientProps {
     outOfStock: number
   }
   categories: Array<{ id: string; name: string; productCount: number }>
+  preorderPool: PreorderPickerItem[]
 }
 
 const CATEGORY_ALL = "__all__"
@@ -72,6 +75,7 @@ export function ProductsListClient({
   products,
   counts,
   categories,
+  preorderPool,
 }: ProductsListClientProps) {
   const router = useRouter()
   const [search, setSearch] = React.useState("")
@@ -82,8 +86,14 @@ export function ProductsListClient({
   const [bulkPending, setBulkPending] = React.useState(false)
   const [bulkError, setBulkError] = React.useState<string | null>(null)
   const [page, setPage] = React.useState(1)
+  const [pickerOpen, setPickerOpen] = React.useState(false)
   const PAGE_SIZE = 50
   const searchRef = React.useRef<HTMLInputElement>(null)
+
+  const activeCategory =
+    category !== CATEGORY_ALL && category !== "__uncategorized__"
+      ? categories.find((c) => c.id === category) ?? null
+      : null
 
   // Press "/" anywhere to focus the search bar (skip when typing in another
   // input — we don't want to steal focus from the form fields a user is in).
@@ -301,6 +311,30 @@ export function ProductsListClient({
           >
             Sin categoría
           </button>
+        </div>
+      )}
+
+      {/* "Add from preorders" affordance — appears when a real category
+          chip is active so Ever has somewhere to drop the new items. */}
+      {activeCategory && preorderPool.length > 0 && (
+        <div className="flex items-center justify-between rounded-lg border border-dashed border-primary/30 bg-primary/5 px-3 py-2">
+          <div className="text-xs text-muted-foreground">
+            ¿Faltan productos en{" "}
+            <span className="font-semibold text-foreground">
+              {activeCategory.name}
+            </span>
+            ? Trae desde el pool de Por encargo ({preorderPool.length}{" "}
+            disponibles).
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPickerOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="size-3.5" />
+            Agregar desde Por encargo
+          </Button>
         </div>
       )}
 
@@ -797,6 +831,19 @@ export function ProductsListClient({
             )}
           </span>
         </div>
+      )}
+
+      {/* Promote-from-preorder picker. Mounted unconditionally so its
+          internal state survives re-renders, but only opens when Ever
+          clicks the affordance above. */}
+      {activeCategory && (
+        <PreorderPickerDialog
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          pool={preorderPool}
+          targetCategoryId={activeCategory.id}
+          targetCategoryName={activeCategory.name}
+        />
       )}
     </div>
   )

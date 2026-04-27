@@ -26,32 +26,56 @@ export function StoreSection({
 }) {
   const [activeId, setActiveId] = React.useState<string>(ALL_TAB.id)
 
+  // Identify the "Por encargo" parent (if it exists). Active when its
+  // tab is the selected one — we then show every isPreorder product
+  // regardless of which subcategory it belongs to.
+  const preorderParent = React.useMemo(
+    () => categories.find((c) => c.slug === "por-encargo") ?? null,
+    [categories],
+  )
+  const isPreorderTab =
+    preorderParent !== null && activeId === preorderParent.id
+
+  // Featured row: never includes preorder products — they belong in
+  // their own tab so the front page stays focused on what's in stock.
   const featured = React.useMemo(
-    () => products.filter((p) => p.featured).slice(0, FEATURED_LIMIT),
+    () =>
+      products
+        .filter((p) => p.featured && !p.isPreorder)
+        .slice(0, FEATURED_LIMIT),
     [products],
   )
 
-  // Filter products against the active category. ALL_TAB short-circuits
-  // to the full list — we don't store an "all" row in the DB.
   const filteredAll = React.useMemo(() => {
-    if (activeId === ALL_TAB.id) return products
-    return products.filter((p) => p.categoryIds.includes(activeId))
-  }, [products, activeId])
+    if (isPreorderTab) return products.filter((p) => p.isPreorder)
+    if (activeId === ALL_TAB.id) return products.filter((p) => !p.isPreorder)
+    return products.filter(
+      (p) => !p.isPreorder && p.categoryIds.includes(activeId),
+    )
+  }, [products, activeId, isPreorderTab])
 
   const featuredIds = new Set(featured.map((p) => p.id))
   const restAll = filteredAll.filter((p) => !featuredIds.has(p.id))
   const showFeaturedRow = activeId === ALL_TAB.id && featured.length > 0
   const showRest = activeId !== ALL_TAB.id || filteredAll.length > FEATURED_LIMIT
 
-  // Build the tab list: "Todo" first, then DB categories in their
-  // configured order. Hide tabs that have zero products to avoid empty
-  // states (e.g. NBA right now with no NBA products).
+  // Tab list: "Todo" first, then top-level categories (parentId IS NULL)
+  // in configured order. Subcategories of "Por encargo" are hidden —
+  // they live under that single tab so the storefront stays clean.
   const tabs: Array<{ id: string; label: string }> = [
     { id: ALL_TAB.id, label: ALL_TAB.label },
     ...categories
-      .filter((c) =>
-        products.some((p) => p.categoryIds.includes(c.id)),
-      )
+      .filter((c) => c.parentId === null)
+      .filter((c) => {
+        // "Por encargo" parent has no products of its own, but it's
+        // valid as long as ANY product has isPreorder=true.
+        if (c.slug === "por-encargo") {
+          return products.some((p) => p.isPreorder)
+        }
+        return products.some(
+          (p) => !p.isPreorder && p.categoryIds.includes(c.id),
+        )
+      })
       .map((c) => ({ id: c.id, label: c.name })),
   ]
 

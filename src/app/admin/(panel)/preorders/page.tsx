@@ -30,7 +30,7 @@ export default async function PreordersPage() {
     .sort((a, b) => a.position - b.position)
     .map((c) => ({
       id: c.id,
-      name: c.name.replace(" (por encargo)", ""),
+      name: c.name,
     }))
 
   // Counts per category (a product can live in multiple).

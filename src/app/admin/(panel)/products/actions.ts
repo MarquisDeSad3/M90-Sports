@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { and, eq } from "drizzle-orm"
+import { and, eq, like } from "drizzle-orm"
 import { createId } from "@paralleldrive/cuid2"
 import { db } from "@/lib/db"
 import {
+  categories,
   productCategories,
   productImages,
   products,
@@ -421,6 +422,89 @@ export async function bulkAssignCategoryAction(
     return { ok: true, affected: missing.length }
   } catch {
     return { ok: false, error: "No se pudo asignar la categoría." }
+  }
+}
+
+/**
+ * Promote N preorder products into a regular catalog category.
+ *
+ * Side-effects per product:
+ *   1. `is_preorder` flips to false (no longer "por encargo").
+ *   2. `status` flips to 'published' (so it shows up on the front page).
+ *   3. The target category is added to product_categories.
+ *   4. Every "encargo-*" subcategory is removed from the product, since
+ *      it lives in the regular catalog now and shouldn't double-count
+ *      under the preorder hierarchy.
+ *
+ * The variant stock is NOT touched — Ever can edit it on the product
+ * page if the import set the default 999 placeholder.
+ */
+export async function promoteFromPreorderAction(
+  productIds: string[],
+  categoryId: string,
+): Promise<BulkResult> {
+  await requireAdminRole("manager")
+  const err = validateIds(productIds)
+  if (err) return { ok: false, error: err }
+  if (typeof categoryId !== "string" || !categoryId.startsWith("cat_")) {
+    return { ok: false, error: "Categoría inválida." }
+  }
+  try {
+    // Lookup all encargo-* category ids in one shot so we can scrub them
+    // off the products being promoted.
+    const encargoCats = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(like(categories.slug, "encargo-%"))
+    const encargoIds = encargoCats.map((c) => c.id)
+
+    await db
+      .update(products)
+      .set({
+        isPreorder: false,
+        status: "published",
+        updatedAt: new Date(),
+      })
+      .where(inArray(products.id, productIds))
+
+    if (encargoIds.length > 0) {
+      await db
+        .delete(productCategories)
+        .where(
+          and(
+            inArray(productCategories.productId, productIds),
+            inArray(productCategories.categoryId, encargoIds),
+          ),
+        )
+    }
+
+    // Add the target category, skipping rows that are already there.
+    const existing = await db
+      .select({ productId: productCategories.productId })
+      .from(productCategories)
+      .where(
+        and(
+          inArray(productCategories.productId, productIds),
+          eq(productCategories.categoryId, categoryId),
+        ),
+      )
+    const have = new Set(existing.map((e) => e.productId))
+    const missing = productIds.filter((id) => !have.has(id))
+    if (missing.length > 0) {
+      await db
+        .insert(productCategories)
+        .values(missing.map((productId) => ({ productId, categoryId })))
+    }
+
+    revalidatePath("/admin/products")
+    revalidatePath("/admin/preorders")
+    revalidatePath("/admin/categories")
+    revalidatePath("/")
+    return { ok: true, affected: productIds.length }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "unknown"
+    console.error("[products] promote-from-preorder failed:", msg)
+    return { ok: false, error: "No se pudo promover los productos." }
   }
 }
 

@@ -65,6 +65,31 @@ export function CategoriesManager({ initial }: ManagerProps) {
     setItems(initial)
   }, [initial])
 
+  // Group: top-level rows + their subcategories (preserving sort order
+  // of each layer). Subcategory product counts roll up into the parent
+  // for the storefront preview, so a parent like "Por encargo" still
+  // looks meaningful even if it owns zero products directly.
+  const childrenByParent = React.useMemo(() => {
+    const map = new Map<string, AdminCategory[]>()
+    for (const c of items) {
+      if (c.parentId) {
+        const list = map.get(c.parentId) ?? []
+        list.push(c)
+        map.set(c.parentId, list)
+      }
+    }
+    return map
+  }, [items])
+
+  const topLevel = items.filter((c) => !c.parentId)
+
+  const previewTabs = topLevel.filter((c) => {
+    if (!c.visible) return false
+    if (c.productCount > 0) return true
+    const kids = childrenByParent.get(c.id) ?? []
+    return kids.some((k) => k.productCount > 0)
+  })
+
   async function persistOrder(next: AdminCategory[]) {
     setSavingOrder(true)
     setOrderError(null)
@@ -119,18 +144,16 @@ export function CategoriesManager({ initial }: ManagerProps) {
               <span className="rounded-full border border-[#011b53] bg-[#011b53] px-4 py-2 text-sm font-semibold text-[#efd9a3]">
                 Todo
               </span>
-              {items
-                .filter((c) => c.visible && c.productCount > 0)
-                .map((c) => (
-                  <span
-                    key={c.id}
-                    className="rounded-full border border-[rgba(1,27,83,0.18)] bg-white/70 px-4 py-2 text-sm font-semibold text-[#011b53]"
-                  >
-                    {c.name}
-                  </span>
-                ))}
+              {previewTabs.map((c) => (
+                <span
+                  key={c.id}
+                  className="rounded-full border border-[rgba(1,27,83,0.18)] bg-white/70 px-4 py-2 text-sm font-semibold text-[#011b53]"
+                >
+                  {c.name}
+                </span>
+              ))}
             </div>
-            {items.filter((c) => c.visible && c.productCount > 0).length === 0 && (
+            {previewTabs.length === 0 && (
               <p className="text-xs text-[#011b53]/60">
                 Solo aparece "Todo" hasta que añadas categorías con productos.
               </p>
@@ -185,18 +208,39 @@ export function CategoriesManager({ initial }: ManagerProps) {
             </div>
           ) : (
             <ul className="divide-y">
-              {items.map((c) => (
-                <SortableRow
-                  key={c.id}
-                  category={c}
-                  parents={items}
-                  isEditing={editingId === c.id}
-                  onEdit={() =>
-                    setEditingId((v) => (v === c.id ? null : c.id))
-                  }
-                  onDrop={handleDrop}
-                />
-              ))}
+              {topLevel.map((parent) => {
+                const kids = childrenByParent.get(parent.id) ?? []
+                return (
+                  <React.Fragment key={parent.id}>
+                    <SortableRow
+                      category={parent}
+                      parents={items}
+                      isEditing={editingId === parent.id}
+                      onEdit={() =>
+                        setEditingId((v) =>
+                          v === parent.id ? null : parent.id,
+                        )
+                      }
+                      onDrop={handleDrop}
+                    />
+                    {kids.map((child) => (
+                      <SortableRow
+                        key={child.id}
+                        category={child}
+                        parents={items}
+                        isEditing={editingId === child.id}
+                        onEdit={() =>
+                          setEditingId((v) =>
+                            v === child.id ? null : child.id,
+                          )
+                        }
+                        onDrop={handleDrop}
+                        nested
+                      />
+                    ))}
+                  </React.Fragment>
+                )
+              })}
             </ul>
           )}
         </CardContent>
@@ -211,6 +255,7 @@ interface SortableRowProps {
   isEditing: boolean
   onEdit: () => void
   onDrop: (fromId: string, toId: string) => void
+  nested?: boolean
 }
 
 function SortableRow({
@@ -219,6 +264,7 @@ function SortableRow({
   isEditing,
   onEdit,
   onDrop,
+  nested = false,
 }: SortableRowProps) {
   const [isDragOver, setDragOver] = React.useState(false)
 
@@ -243,6 +289,7 @@ function SortableRow({
       }}
       className={cn(
         "flex flex-col gap-2 px-3 py-2.5 transition-colors",
+        nested && "pl-9 bg-muted/20",
         isDragOver && "bg-primary/5",
       )}
     >

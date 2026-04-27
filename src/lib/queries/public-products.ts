@@ -50,6 +50,7 @@ export interface PublicCategory {
   slug: string
   name: string
   position: number
+  parentId: string | null
 }
 
 /** Visible categories ordered for the storefront tabs. */
@@ -61,6 +62,7 @@ export async function getPublicCategories(): Promise<PublicCategory[]> {
         slug: categories.slug,
         name: categories.name,
         position: categories.position,
+        parentId: categories.parentId,
       })
       .from(categories)
       .where(eq(categories.visible, true))
