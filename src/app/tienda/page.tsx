@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import { Package, Search } from "lucide-react"
 import { Nav } from "@/components/nav"
-import { ProductTile } from "@/components/public/product-tile"
+import { TiendaCatalog } from "@/components/public/tienda-catalog"
 import { getPublicProducts } from "@/lib/queries/public-products"
 
 export const dynamic = "force-dynamic"
@@ -44,45 +43,7 @@ export default async function TiendaPage() {
         </div>
       </section>
 
-      {/* Catalog */}
-      <section className="mx-auto max-w-6xl px-5 pb-20 md:px-8">
-        {products.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[rgba(1,27,83,0.15)] bg-white/50 px-6 py-16 text-center">
-            <div className="grid size-12 place-items-center rounded-full bg-[rgba(1,27,83,0.08)]">
-              <Package className="size-5 text-[#011b53]/60" />
-            </div>
-            <h2 className="text-lg font-semibold text-[#011b53]">
-              Catálogo en preparación
-            </h2>
-            <p className="max-w-sm text-sm text-[#011b53]/65">
-              Estamos trayendo los jerseys ahora mismo. Vuelve pronto o
-              escríbenos por WhatsApp para pedir uno específico.
-            </p>
-            <a
-              href="https://wa.me/5351191461?text=Hola%20M90%2C%20quiero%20saber%20cuándo%20añaden%20más%20productos"
-              target="_blank"
-              rel="noopener"
-              className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#011b53] px-5 py-2.5 text-xs font-semibold text-[#efd9a3] transition-transform hover:-translate-y-0.5"
-            >
-              <Search className="size-3.5" />
-              Pídelo por WhatsApp
-            </a>
-          </div>
-        ) : (
-          <>
-            <div className="mb-6 flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#011b53]/60">
-                {products.length} {products.length === 1 ? "producto" : "productos"}
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
-              {products.map((p) => (
-                <ProductTile key={p.id} product={p} />
-              ))}
-            </div>
-          </>
-        )}
-      </section>
+      <TiendaCatalog products={products} />
 
       {/* Footer */}
       <footer className="mx-auto max-w-6xl px-5 pb-10 text-center md:px-8">
