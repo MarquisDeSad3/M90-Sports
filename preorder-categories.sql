@@ -11,21 +11,30 @@
 -- 1. Create the categories (one per bucket Ever cares about).
 INSERT INTO categories (id, slug, name, description, position, visible, created_at, updated_at)
 VALUES
-  ('cat_enc_selecciones', 'encargo-selecciones', 'Selecciones (por encargo)',  'Selecciones nacionales por pedido',                             100, true, NOW(), NOW()),
-  ('cat_enc_clubes',      'encargo-clubes',      'Clubes (por encargo)',       'Clubes y merchandise por pedido',                                110, true, NOW(), NOW()),
-  ('cat_enc_nba',         'encargo-nba',         'NBA (por encargo)',          'NBA por pedido',                                                 120, true, NOW(), NOW()),
-  ('cat_enc_retro',       'encargo-retro',       'Retro (por encargo)',        'Retro / vintage por pedido',                                     130, true, NOW(), NOW()),
-  ('cat_enc_ninos',       'encargo-ninos',       'Niños (por encargo)',        'Tallas infantiles por pedido',                                   140, true, NOW(), NOW()),
-  ('cat_enc_accesorios',  'encargo-accesorios',  'Accesorios (por encargo)',   'Polos, sudaderas, conjuntos de entrenamiento por pedido',        150, true, NOW(), NOW()),
-  ('cat_enc_balones',     'encargo-balones',     'Balones (por encargo)',      'Balones y artículos similares por pedido',                       160, true, NOW(), NOW())
+  ('cat_enc_selecciones', 'encargo-selecciones', 'Selecciones',  'Selecciones nacionales por pedido',                             100, true, NOW(), NOW()),
+  ('cat_enc_clubes',      'encargo-clubes',      'Clubes',       'Clubes y merchandise por pedido',                                110, true, NOW(), NOW()),
+  ('cat_enc_nba',         'encargo-nba',         'NBA',          'NBA por pedido',                                                 120, true, NOW(), NOW()),
+  ('cat_enc_retro',       'encargo-retro',       'Retro',        'Retro / vintage por pedido',                                     130, true, NOW(), NOW()),
+  ('cat_enc_ninos',       'encargo-ninos',       'Niños',        'Tallas infantiles por pedido',                                   140, true, NOW(), NOW()),
+  ('cat_enc_accesorios',  'encargo-accesorios',  'Accesorios',   'Polos, sudaderas, conjuntos de entrenamiento por pedido',        150, true, NOW(), NOW()),
+  ('cat_enc_balones',     'encargo-balones',     'Balones',      'Balones y artículos similares por pedido',                       160, true, NOW(), NOW()),
+  ('cat_enc_otros',       'encargo-otros',       'Otros',        'Productos que no entran en las otras colecciones',               170, true, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
+
+-- 1b. Make sure every encargo-* category is parented under "Por encargo"
+--     (idempotent — also fixes any new ones created in step 1 above).
+UPDATE categories
+SET parent_id = (SELECT id FROM categories WHERE slug = 'por-encargo'),
+    updated_at = NOW()
+WHERE slug LIKE 'encargo-%'
+  AND (parent_id IS NULL OR parent_id <> (SELECT id FROM categories WHERE slug = 'por-encargo'));
 
 -- 2. Wipe any pre-existing assignments so re-running this file produces
 --    a clean state.
 DELETE FROM product_categories
 WHERE category_id IN (
   'cat_enc_selecciones','cat_enc_clubes','cat_enc_nba','cat_enc_retro',
-  'cat_enc_ninos','cat_enc_accesorios','cat_enc_balones'
+  'cat_enc_ninos','cat_enc_accesorios','cat_enc_balones','cat_enc_otros'
 );
 
 -- 3. Niños — match "Niños/Niño/Kids/Youth/Bebé/Baby/Child" anywhere.
@@ -98,6 +107,20 @@ WHERE id LIKE 'prod_yp_%'
   AND id NOT IN (
     SELECT product_id FROM product_categories
     WHERE category_id IN ('cat_enc_ninos','cat_enc_retro','cat_enc_selecciones','cat_enc_nba','cat_enc_clubes','cat_enc_balones')
+  );
+
+-- 9a. Otros — catch-all for everything that didn't match a specific
+--     bucket. Runs last so it picks up only what the rest left behind.
+INSERT INTO product_categories (product_id, category_id)
+SELECT id, 'cat_enc_otros' FROM products
+WHERE id LIKE 'prod_yp_%'
+  AND status != 'archived'
+  AND id NOT IN (
+    SELECT product_id FROM product_categories
+    WHERE category_id IN (
+      'cat_enc_ninos','cat_enc_retro','cat_enc_balones','cat_enc_clubes',
+      'cat_enc_nba','cat_enc_selecciones','cat_enc_accesorios'
+    )
   );
 
 -- 9b. Archive obvious SKU-only garbage products (names that are pure
