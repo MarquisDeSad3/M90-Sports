@@ -2,11 +2,13 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Loader2,
   MessageCircle,
   Search,
   Sparkles,
@@ -20,80 +22,113 @@ import type {
 
 interface Props {
   products: PublicPreorderProduct[]
+  total: number
+  page: number
+  pageSize: number
+  activeCategory: string | null
+  searchQuery: string
   subcategories: PublicPreorderSubcategory[]
 }
 
-const PAGE_SIZE = 30
+export function PorEncargoClient({
+  products,
+  total,
+  page,
+  pageSize,
+  activeCategory,
+  searchQuery,
+  subcategories,
+}: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [pending, startTransition] = React.useTransition()
 
-export function PorEncargoClient({ products, subcategories }: Props) {
-  const [filter, setFilter] = React.useState<string>("all")
-  const [search, setSearch] = React.useState("")
-  const [page, setPage] = React.useState(1)
-
+  // Local input mirror — keeps typing snappy. The actual URL update
+  // (and refetch) is debounced 300ms so we don't slam the server on
+  // every keystroke.
+  const [searchInput, setSearchInput] = React.useState(searchQuery)
+  const initialMount = React.useRef(true)
   React.useEffect(() => {
-    setPage(1)
-  }, [filter, search])
-
-  const filtered = React.useMemo(() => {
-    let arr = products
-    if (filter !== "all") {
-      arr = arr.filter((p) => p.categoryIds.includes(filter))
+    setSearchInput(searchQuery)
+  }, [searchQuery])
+  React.useEffect(() => {
+    if (initialMount.current) {
+      initialMount.current = false
+      return
     }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      arr = arr.filter((p) =>
-        [p.name, p.team ?? ""].join(" ").toLowerCase().includes(q),
-      )
-    }
-    return arr
-  }, [products, filter, search])
+    const handle = window.setTimeout(() => {
+      pushParams({ q: searchInput.trim() || null, page: 1 })
+    }, 300)
+    return () => window.clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const current = Math.min(page, totalPages)
-  const start = (current - 1) * PAGE_SIZE
-  const visible = filtered.slice(start, start + PAGE_SIZE)
+  function pushParams(updates: Record<string, string | number | null>) {
+    const next = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === "" || value === 0 || value === undefined) {
+        next.delete(key)
+      } else {
+        next.set(key, String(value))
+      }
+    }
+    if (next.get("page") === "1") next.delete("page")
+    const qs = next.toString()
+    startTransition(() => {
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    })
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const start = (page - 1) * pageSize
+  const showingFrom = total === 0 ? 0 : start + 1
+  const showingTo = Math.min(start + pageSize, total)
 
   return (
     <>
       {/* Sticky filter bar */}
       <section className="sticky top-[64px] z-20 mx-auto max-w-6xl bg-[#f7ebc8]/90 px-5 py-3 backdrop-blur md:top-[72px] md:px-8">
-        {/* Search */}
         <div className="relative">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#011b53]/55" />
           <input
             type="search"
             placeholder="Buscar equipo, jugador, temporada…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="h-11 w-full rounded-full border border-[rgba(1,27,83,0.18)] bg-white/85 pl-11 pr-10 text-sm font-medium text-[#011b53] placeholder:text-[#011b53]/45 focus:border-[#011b53] focus:outline-none focus:ring-2 focus:ring-[#011b53]/15"
           />
-          {search && (
+          {pending ? (
+            <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-[#011b53]/55" />
+          ) : searchInput ? (
             <button
               type="button"
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearchInput("")
+                pushParams({ q: null, page: 1 })
+              }}
               className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-[#011b53]/65 transition-colors hover:bg-[#011b53]/10 hover:text-[#011b53]"
               aria-label="Limpiar"
             >
               <X className="size-4" />
             </button>
-          )}
+          ) : null}
         </div>
 
         {/* Subcategory chips */}
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           <ChipButton
-            active={filter === "all"}
-            onClick={() => setFilter("all")}
+            active={activeCategory === null}
+            onClick={() => pushParams({ cat: null, page: 1 })}
             label="Todos"
-            count={products.length}
           />
           {subcategories
             .filter((s) => s.count > 0)
             .map((s) => (
               <ChipButton
                 key={s.id}
-                active={filter === s.id}
-                onClick={() => setFilter(s.id)}
+                active={activeCategory === s.id}
+                onClick={() => pushParams({ cat: s.id, page: 1 })}
                 label={s.name}
                 count={s.count}
               />
@@ -104,17 +139,22 @@ export function PorEncargoClient({ products, subcategories }: Props) {
       {/* Result count */}
       <section className="mx-auto max-w-6xl px-5 pt-4 md:px-8">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#011b53]/55 tabular-nums">
-          {filtered.length === products.length
-            ? `${products.length.toLocaleString("es-CU")} productos`
-            : `${filtered.length.toLocaleString("es-CU")} de ${products.length.toLocaleString("es-CU")} productos`}
+          {searchQuery || activeCategory
+            ? `${total.toLocaleString("es-CU")} ${total === 1 ? "resultado" : "resultados"}`
+            : `${total.toLocaleString("es-CU")} productos`}
         </p>
       </section>
 
       {/* Grid */}
       <section className="mx-auto max-w-6xl px-5 py-4 md:px-8">
-        {visible.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
-            {visible.map((p) => (
+        {products.length > 0 ? (
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4",
+              pending && "opacity-70 transition-opacity",
+            )}
+          >
+            {products.map((p) => (
               <PreorderCard key={p.id} product={p} />
             ))}
           </div>
@@ -122,24 +162,25 @@ export function PorEncargoClient({ products, subcategories }: Props) {
           <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[rgba(1,27,83,0.15)] bg-white/50 p-12 text-center">
             <Search className="size-7 text-[#011b53]/40" />
             <p className="text-sm text-[#011b53]/65">
-              {search
-                ? `Sin resultados para "${search}"`
+              {searchQuery
+                ? `Sin resultados para "${searchQuery}"`
                 : "No hay productos en esta categoría todavía."}
             </p>
           </div>
         )}
       </section>
 
-      {/* Pagination */}
-      {filtered.length > PAGE_SIZE && (
+      {/* Pagination — server-side via URL */}
+      {totalPages > 1 && (
         <section className="mx-auto max-w-6xl px-5 pb-6 md:px-8">
           <Pagination
-            page={current}
+            page={page}
             totalPages={totalPages}
-            onChange={setPage}
-            from={start + 1}
-            to={Math.min(start + PAGE_SIZE, filtered.length)}
-            total={filtered.length}
+            onChange={(p) => pushParams({ page: p === 1 ? null : p })}
+            from={showingFrom}
+            to={showingTo}
+            total={total}
+            pending={pending}
           />
         </section>
       )}
@@ -156,7 +197,7 @@ function ChipButton({
   active: boolean
   onClick: () => void
   label: string
-  count: number
+  count?: number
 }) {
   return (
     <button
@@ -170,16 +211,18 @@ function ChipButton({
       )}
     >
       {label}
-      <span
-        className={cn(
-          "ml-2 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
-          active
-            ? "bg-white/20 text-[#efd9a3]"
-            : "bg-[#011b53]/8 text-[#011b53]/65",
-        )}
-      >
-        {count}
-      </span>
+      {count !== undefined && (
+        <span
+          className={cn(
+            "ml-2 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+            active
+              ? "bg-white/20 text-[#efd9a3]"
+              : "bg-[#011b53]/10 text-[#011b53]/65",
+          )}
+        >
+          {count}
+        </span>
+      )}
     </button>
   )
 }
@@ -270,6 +313,7 @@ function Pagination({
   from,
   to,
   total,
+  pending,
 }: {
   page: number
   totalPages: number
@@ -277,6 +321,7 @@ function Pagination({
   from: number
   to: number
   total: number
+  pending: boolean
 }) {
   const pages = pageWindow(page, totalPages, 7)
   return (
@@ -284,18 +329,20 @@ function Pagination({
       <span className="tabular-nums">
         <span className="font-semibold text-[#011b53]">{from}</span>–
         <span className="font-semibold text-[#011b53]">{to}</span> de{" "}
-        <span className="font-semibold text-[#011b53]">{total.toLocaleString("es-CU")}</span>
+        <span className="font-semibold text-[#011b53]">
+          {total.toLocaleString("es-CU")}
+        </span>
       </span>
       <div className="flex items-center gap-1">
         <PageButton
-          disabled={page <= 1}
+          disabled={page <= 1 || pending}
           onClick={() => onChange(1)}
           aria-label="Primera"
         >
           <ChevronsLeft className="size-3.5" />
         </PageButton>
         <PageButton
-          disabled={page <= 1}
+          disabled={page <= 1 || pending}
           onClick={() => onChange(page - 1)}
           aria-label="Anterior"
         >
@@ -310,6 +357,7 @@ function Pagination({
             <PageButton
               key={p}
               active={p === page}
+              disabled={pending}
               onClick={() => onChange(p)}
             >
               {p}
@@ -317,14 +365,14 @@ function Pagination({
           ),
         )}
         <PageButton
-          disabled={page >= totalPages}
+          disabled={page >= totalPages || pending}
           onClick={() => onChange(page + 1)}
           aria-label="Siguiente"
         >
           <ChevronRight className="size-3.5" />
         </PageButton>
         <PageButton
-          disabled={page >= totalPages}
+          disabled={page >= totalPages || pending}
           onClick={() => onChange(totalPages)}
           aria-label="Última"
         >

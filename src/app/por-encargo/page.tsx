@@ -2,13 +2,15 @@ import type { Metadata } from "next"
 import { Nav } from "@/components/nav"
 import { WhatsappFloat } from "@/components/whatsapp-float"
 import {
-  getPublicPreorderProducts,
+  getPublicPreorderPage,
   getPublicPreorderSubcategories,
 } from "@/lib/queries/public-preorders"
 import { PorEncargoClient } from "@/components/public/por-encargo-client"
 
-export const dynamic = "force-dynamic"
-export const revalidate = 0
+// Cache the page output for 60s — the catalog is large enough that
+// hammering the DB on every request would be wasteful, but small
+// enough that a one-minute lag is acceptable when Ever publishes.
+export const revalidate = 60
 
 export const metadata: Metadata = {
   title: "Por encargo",
@@ -25,10 +27,25 @@ export const metadata: Metadata = {
 }
 
 const M90_NAVY = "#011b53"
+const PAGE_SIZE = 30
 
-export default async function PorEncargoPage() {
-  const [products, subcategories] = await Promise.all([
-    getPublicPreorderProducts(),
+interface PageProps {
+  searchParams: Promise<{ page?: string; cat?: string; q?: string }>
+}
+
+export default async function PorEncargoPage({ searchParams }: PageProps) {
+  const { page: rawPage, cat: rawCat, q: rawQ } = await searchParams
+  const page = Math.max(1, Number(rawPage) || 1)
+  const cat = rawCat?.trim() || null
+  const q = rawQ?.trim() || ""
+
+  const [data, subcategories] = await Promise.all([
+    getPublicPreorderPage({
+      page,
+      pageSize: PAGE_SIZE,
+      categoryId: cat,
+      search: q,
+    }),
     getPublicPreorderSubcategories(),
   ])
 
@@ -53,14 +70,21 @@ export default async function PorEncargoPage() {
             <span style={{ color: "#980e21" }}>te lo conseguimos</span>.
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-[#011b53]/75 md:text-base">
-            {products.length.toLocaleString("es-CU")} productos disponibles por
-            encargo: clubes, selecciones, NBA, retro y más. Filtra por
-            categoría, busca por equipo y consulta el precio por WhatsApp.
+            Filtra por categoría, busca por equipo y consulta el precio por
+            WhatsApp.
           </p>
         </div>
       </section>
 
-      <PorEncargoClient products={products} subcategories={subcategories} />
+      <PorEncargoClient
+        products={data.products}
+        total={data.total}
+        page={page}
+        pageSize={PAGE_SIZE}
+        activeCategory={cat}
+        searchQuery={q}
+        subcategories={subcategories}
+      />
 
       <footer className="mx-auto max-w-6xl px-5 pb-10 pt-10 text-center md:px-8">
         <p className="text-xs text-[#011b53]/55">
