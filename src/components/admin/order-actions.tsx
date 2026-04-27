@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { WhatsappNotify } from "@/components/admin/whatsapp-notify"
 import type { MockOrder } from "@/lib/mock-orders"
 import {
   approveBalance,
@@ -67,20 +68,26 @@ export function OrderActions({ order }: OrderActionsProps) {
   // Terminal states first.
   if (order.status === "delivered") {
     return (
-      <Banner
-        tone="success"
-        title="Pedido entregado"
-        body="El pedido ya llegó al cliente."
-      />
+      <div className="flex flex-col gap-2.5">
+        <Banner
+          tone="success"
+          title="Pedido entregado"
+          body="El pedido ya llegó al cliente."
+        />
+        <WhatsappNotify order={order} template="delivered" />
+      </div>
     )
   }
   if (order.status === "cancelled") {
     return (
-      <Banner
-        tone="destructive"
-        title="Pedido cancelado"
-        body={order.cancelReason}
-      />
+      <div className="flex flex-col gap-2.5">
+        <Banner
+          tone="destructive"
+          title="Pedido cancelado"
+          body={order.cancelReason}
+        />
+        <WhatsappNotify order={order} template="cancelled" />
+      </div>
     )
   }
   if (order.status === "refunded") {
@@ -124,6 +131,7 @@ export function OrderActions({ order }: OrderActionsProps) {
             )}
             Confirmar pedido
           </Button>
+          <WhatsappNotify order={order} template="confirmed" />
         </>
       )}
 
@@ -173,6 +181,7 @@ export function OrderActions({ order }: OrderActionsProps) {
                   Aprobar depósito
                 </Button>
               )}
+              <WhatsappNotify order={order} template="awaiting_deposit" />
             </>
           )}
 
@@ -199,6 +208,7 @@ export function OrderActions({ order }: OrderActionsProps) {
                 <PlaneTakeoff className="size-4" />
                 Marcar en camino
               </Button>
+              <WhatsappNotify order={order} template="sourcing" />
             </>
           )}
 
@@ -224,6 +234,7 @@ export function OrderActions({ order }: OrderActionsProps) {
                 <PackageCheck className="size-4" />
                 Marcar como llegado
               </Button>
+              <WhatsappNotify order={order} template="in_transit" />
             </>
           )}
 
@@ -252,6 +263,7 @@ export function OrderActions({ order }: OrderActionsProps) {
                   <CheckCircle2 className="size-4" />
                   Aprobar saldo
                 </Button>
+                <WhatsappNotify order={order} template="arrived" />
               </>
             )}
 
@@ -275,6 +287,7 @@ export function OrderActions({ order }: OrderActionsProps) {
                   <Package className="size-4" />
                   Marcar como preparando
                 </Button>
+                <WhatsappNotify order={order} template="payment_verified" />
               </>
             )}
         </>
@@ -309,19 +322,22 @@ export function OrderActions({ order }: OrderActionsProps) {
                 </Button>
               </>
             ) : (
-              <Banner
-                tone="info"
-                title="Esperando comprobante"
-                body={`El cliente debe pagar por ${
-                  order.paymentMethod === "transfermovil"
-                    ? "Transfermóvil"
-                    : order.paymentMethod === "zelle"
-                      ? "Zelle"
-                      : order.paymentMethod === "paypal"
-                        ? "PayPal"
-                        : order.paymentMethod
-                } y enviarte el comprobante.`}
-              />
+              <>
+                <Banner
+                  tone="info"
+                  title="Esperando comprobante"
+                  body={`El cliente debe pagar por ${
+                    order.paymentMethod === "transfermovil"
+                      ? "Transfermóvil"
+                      : order.paymentMethod === "zelle"
+                        ? "Zelle"
+                        : order.paymentMethod === "paypal"
+                          ? "PayPal"
+                          : order.paymentMethod
+                  } y enviarte el comprobante.`}
+                />
+                <WhatsappNotify order={order} template="awaiting_proof" />
+              </>
             )}
           </>
         )}
@@ -358,6 +374,18 @@ export function OrderActions({ order }: OrderActionsProps) {
               <XCircle className="size-4" />
               Rechazar pago
             </Button>
+            <div className="flex flex-wrap gap-2">
+              <WhatsappNotify
+                order={order}
+                template="payment_verified"
+                size="sm"
+              />
+              <WhatsappNotify
+                order={order}
+                template="payment_rejected"
+                size="sm"
+              />
+            </div>
           </>
         )}
 
@@ -382,6 +410,7 @@ export function OrderActions({ order }: OrderActionsProps) {
               <Package className="size-4" />
               Marcar como preparando
             </Button>
+            <WhatsappNotify order={order} template="payment_verified" />
           </>
         )}
 
@@ -404,6 +433,7 @@ export function OrderActions({ order }: OrderActionsProps) {
             <Truck className="size-4" />
             Marcar como enviado
           </Button>
+          <WhatsappNotify order={order} template="preparing" />
         </>
       )}
 
@@ -425,6 +455,7 @@ export function OrderActions({ order }: OrderActionsProps) {
             <CheckCircle2 className="size-4" />
             Marcar como entregado
           </Button>
+          <WhatsappNotify order={order} template="shipped" />
         </>
       )}
 
