@@ -59,7 +59,7 @@ INSERT INTO product_categories (product_id, category_id)
 SELECT id, 'cat_enc_clubes' FROM products
 WHERE id LIKE 'prod_yp_%'
   AND status != 'archived'
-  AND lower(name) ~ '(real madrid|\yr mad\y|barcelona|\yfcb\y|fc bayern|manchester|\ymnu\y|\ymci\y|liverpool|chelsea|\yche\y|arsenal|\yars\y|tottenham|paris saint|\ypsg\y|bayern|dortmund|juventus|juve|inter milan|ac milan|atletico|atlético|napoli|roma|lazio|ajax|psv|benfica|porto|boca|river plate|flamengo|palmeiras|santos|leverkusen|leipzig|monaco|valencia|sevilla|villarreal|betis|chivas|az alkmaar|hoffenheim|leeds|west ham|everton|newcastle|wolves|brighton|aston villa|fulham|inter miami|marseille|celtic|tigres|sao paulo|sunderland|colo colo|maccabi|aniquiladores|club nacional|gremio|millonarios|olimpia|sporting|red bull|cavaliers|cd universidad|club deportivo|real sociedad|elche fc|albacete|leganes|osasuna|real zaragoza|hannover|wolfsburg|st\\. pauli)'
+  AND lower(name) ~ '(real madrid|\yr mad\y|barcelona|\yfcb\y|\ybar\y|fc bayern|manchester|\ymnu\y|\ymci\y|\ymufc\y|\ymcfc\y|liverpool|\yliv\y|chelsea|\yche\y|arsenal|\yars\y|tottenham|\ytot\y|paris saint|\ypsg\y|bayern|\ybay\y|dortmund|\ybvb\y|juventus|juve|\yjuv\y|inter milan|ac milan|\yacm\y|atletico|atlético|\yatm\y|\yatl\y|napoli|roma|lazio|atalanta|fiorentina|sassuolo|torino|udinese|genoa|bologna|empoli|cagliari|verona|salernitana|cremonese|parma|lecce|spezia|sampdoria|frosinone|como 1907|ajax|psv|feyenoord|benfica|porto|sporting|boca|river plate|flamengo|palmeiras|santos|leverkusen|leipzig|monaco|valencia|sevilla|villarreal|betis|espanyol|real sociedad|athletic|getafe|levante|mallorca|cádiz|cadiz|granada|las palmas|rayo vallecano|celta|chivas|cruz azul|club león|leon mexico|pumas|america 20|america sub|club américa|tigres|monterrey|toluca|pachuca|atlas mexico|santos laguna|az alkmaar|hoffenheim|leeds|west ham|everton|newcastle|nottingham|nottm forest|crystal palace|wolves|brighton|aston villa|fulham|brentford|burnley|bournemouth|sheffield|norwich|watford|inter miami|la galaxy|lafc|seattle sounders|nashville sc|austin fc|portland timbers|marseille|\yom\y|lyon|\yol\y|lille|nice|rennes|stade brestois|saint.etienne|monaco|nantes|toulouse|montpellier|strasbourg|metz|reims|celtic|rangers|tigres|sao paulo|sunderland|colo colo|maccabi|aniquiladores|club nacional|gremio|millonarios|olimpia|sporting|red bull|cavaliers|cd universidad|club deportivo|real sociedad|elche fc|albacete|leganes|osasuna|real zaragoza|hannover|wolfsburg|st\\. pauli|hertha|union berlin|mainz|fc köln|fc koln|köln|koln|stuttgart|werder bremen|eintracht|frankfurt|schalke|hamburg|hamburger|hsv|m.nchengladbach|gladbach|borussia|fluminense|botafogo|cruzeiro|internacional|vasco|atletico mineiro|atlético mineiro|fortaleza|corinthians|talleres|estudiantes|independiente|velez|racing club|al ittihad|al hilal|al nassr|al ahli|al shabab|al ettifaq|nasr saudi|al duhail|al sadd|kashima|kashima antlers|urawa|fc tokyo|gamba osaka|cerezo|kawasaki frontale|yokohama|ulsan|jeonbuk|seoul fc|maccabi|hapoel|olympiacos|panathinaikos|paok|aek|saprissa|alajuelense|herediano|cartagines|palestino|colo|universidad de chile|universidad católica|nacional uruguay|peñarol|wanderers|defensor|river plate uruguay|orlando city|fc cincinnati|new england revolution|columbus crew|chicago fire|colorado rapids|fc dallas|d\\.c\\. united|new york red bulls|new york city|toronto fc|montreal impact|cf montréal|vancouver whitecaps|sporting kansas|real salt lake|houston dynamo|san jose earthquakes|st\\. louis city|charlotte fc|miami fc|cincinnati|nashville|ferrari|alpine f1|mclaren|mercedes f1|red bull racing|aston martin f1)'
   AND id NOT IN (
     SELECT product_id FROM product_categories
     WHERE category_id IN ('cat_enc_ninos','cat_enc_retro')
@@ -83,7 +83,7 @@ INSERT INTO product_categories (product_id, category_id)
 SELECT id, 'cat_enc_selecciones' FROM products
 WHERE id LIKE 'prod_yp_%'
   AND status != 'archived'
-  AND lower(name) ~ '(argentina|brasil|brazil|francia|france|inglaterra|england|españa|spain|portugal|alemania|germany|italia|italy|holanda|netherlands|bélgica|belgium|belgica|croacia|croatia|méxico|mexico|marruecos|morocco|sudáfrica|south africa|colombia|chile|peru|perú|uruguay|paraguay|venezuela|ecuador|panamá|panama|cuba|japón|japan|corea|korea|gales|wales|escocia|scotland|irlanda|ireland|argelia|algeria|nigeria|senegal|ghana|cameroon|tunisia|saudi|qatar|usa|canadá|canada|noruega|norway|suecia|sweden|dinamarca|denmark|polonia|poland|austria|serbia|suiza|switzerland|turquía|turkey|honduras|costa rica|guatemala|el salvador|jamaica|haiti|paraguay|puerto rico|venezuela|bosnia)'
+  AND lower(name) ~ '(argentina|brasil|brazil|francia|france|inglaterra|england|españa|spain|portugal|alemania|germany|italia|italy|holanda|netherlands|bélgica|belgium|belgica|croacia|croatia|méxico|mexico|marruecos|morocco|sudáfrica|south africa|colombia|chile|peru|perú|uruguay|paraguay|venezuela|ecuador|panamá|panama|cuba|japón|japan|corea|korea|gales|wales|escocia|scotland|irlanda|ireland|argelia|algeria|nigeria|senegal|ghana|cameroon|tunisia|saudi|qatar|usa|canadá|canada|noruega|norway|suecia|sweden|dinamarca|denmark|polonia|poland|austria|serbia|suiza|switzerland|turquía|turkey|honduras|costa rica|guatemala|el salvador|jamaica|haiti|paraguay|puerto rico|venezuela|bosnia|china|india|indonesia|filipinas|philippines|vietnam|thailand|tailandia|australia|new zealand|nueva zelanda|iran|iraq|israel|palestine|palestina|jordan|líbano|lebanon|syria|siria|costa de marfil|ivory coast|south korea|north korea|república dominicana|dominican|trinidad|honduras|nicaragua|el salvador|guatemala|bolivia|albania|grecia|greece|hungría|hungary|república checa|czech|eslovaquia|slovakia|eslovenia|slovenia|rumania|romania|bulgaria|finland|finlandia|islandia|iceland|estonia|letonia|latvia|lituania|lithuania|república democrática|dr congo|drc|nigeria|kenya|kenia|tanzania|burkina|mali|libya|libia|egypt|egipto|sudán|sudan|chad|niger|guinea|comoros|botswana|namibia|gabon|congo)'
   AND id NOT IN (
     SELECT product_id FROM product_categories
     WHERE category_id IN ('cat_enc_ninos','cat_enc_retro','cat_enc_clubes','cat_enc_nba')
@@ -98,6 +98,22 @@ WHERE id LIKE 'prod_yp_%'
   AND id NOT IN (
     SELECT product_id FROM product_categories
     WHERE category_id IN ('cat_enc_ninos','cat_enc_retro','cat_enc_selecciones','cat_enc_nba','cat_enc_clubes','cat_enc_balones')
+  );
+
+-- 9b. Archive obvious SKU-only garbage products (names that are pure
+--     codes with no recognizable team/player). These can't be sold —
+--     no customer searches for "L722# S-2XL" or "8106".
+UPDATE products SET status = 'archived', updated_at = NOW()
+WHERE id LIKE 'prod_yp_%'
+  AND status != 'archived'
+  AND (
+    -- Names that are essentially just SKU codes
+    lower(name) ~ '^[a-z]{0,3}[0-9]{3,}\\W*\\W?(s-|m-|l-|xl-|xxl-|size|talla|2xl|3xl|4xl|5xl|6xl|7xl)?[\\W\\d-]{0,15}$'
+    -- Pure numeric / hash SKUs
+    OR lower(name) ~ '^[\\d#\\s\\-\\.x]+$'
+    -- Generic "high quality leggings adults" type catch-alls
+    OR lower(name) ~ '^high quality '
+    OR lower(name) ~ '^[a-z]+ #?\\d+ [a-z]+ [a-z]+$'  -- "Adidas #1033 Royal Azul"
   );
 
 -- 10. Final report.
