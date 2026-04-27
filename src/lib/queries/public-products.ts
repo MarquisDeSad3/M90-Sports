@@ -1,5 +1,5 @@
 import "server-only"
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm"
 import { db } from "@/lib/db"
 import {
   categories,
@@ -86,7 +86,16 @@ export async function getPublicProducts(): Promise<PublicProduct[]> {
       .where(
         and(
           isNull(products.deletedAt),
-          eq(products.status, "published" satisfies ProductStatus)
+          or(
+            eq(products.status, "published" satisfies ProductStatus),
+            // Preorders ride along even as drafts — they're a giant
+            // "ask us by WhatsApp" pool, not a published catalog. Ever
+            // archives obvious garbage from /admin/preorders to hide it.
+            and(
+              eq(products.isPreorder, true),
+              eq(products.status, "draft" satisfies ProductStatus),
+            ),
+          )!
         )
       )
       .orderBy(
@@ -94,6 +103,10 @@ export async function getPublicProducts(): Promise<PublicProduct[]> {
         asc(products.sortOrder),
         desc(products.updatedAt)
       )
+      // Cap the home payload — there are ~4700 preorders and shipping
+      // them all to every visitor would balloon the page. Featured +
+      // recent come first, the rest live behind a dedicated route.
+      .limit(500)
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
       console.warn("[public-products] DB unavailable in dev:", err)
@@ -185,7 +198,13 @@ export async function getPublicProduct(
       and(
         isNull(products.deletedAt),
         eq(products.slug, slug),
-        eq(products.status, "published" satisfies ProductStatus)
+        or(
+          eq(products.status, "published" satisfies ProductStatus),
+          and(
+            eq(products.isPreorder, true),
+            eq(products.status, "draft" satisfies ProductStatus),
+          ),
+        )!
       )
     )
     .limit(1)
