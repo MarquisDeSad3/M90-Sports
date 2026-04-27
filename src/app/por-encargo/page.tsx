@@ -11,9 +11,17 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export const metadata: Metadata = {
-  title: "Por encargo · M90 Sports",
+  title: "Por encargo",
   description:
     "Catálogo completo de jerseys, accesorios y retro por encargo. Búscalo, elige y te lo cotizamos por WhatsApp.",
+  alternates: { canonical: "/por-encargo" },
+  openGraph: {
+    title: "Por encargo · M90 Sports",
+    description:
+      "Lo que no tenemos en stock, te lo conseguimos. Selecciones, clubes, NBA, retro y más.",
+    url: "/por-encargo",
+    type: "website",
+  },
 }
 
 const M90_NAVY = "#011b53"

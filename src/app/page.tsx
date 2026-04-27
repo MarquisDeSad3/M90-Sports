@@ -23,6 +23,32 @@ export const metadata: Metadata = {
     "Camisetas oficiales, retro y selecciones. Envíos a toda Cuba. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.",
 }
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+  "https://m90-sports.com"
+
+const orgLd = {
+  "@context": "https://schema.org",
+  "@type": "OnlineStore",
+  name: "M90 Sports",
+  url: SITE_URL,
+  logo: `${SITE_URL}/brand/m90-red.png`,
+  description:
+    "Tienda de jerseys deportivos en Cuba. Camisetas oficiales, retro, selecciones y NBA.",
+  address: {
+    "@type": "PostalAddress",
+    addressCountry: "CU",
+    addressRegion: "La Habana",
+  },
+  areaServed: { "@type": "Country", name: "Cuba" },
+  paymentAccepted: ["Transfermóvil", "Zelle", "PayPal", "Cash"],
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/tienda?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+}
+
 export default async function HomePage() {
   const [products, categories] = await Promise.all([
     getPublicProducts(),
@@ -31,6 +57,10 @@ export default async function HomePage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }}
+      />
       <Nav />
       <main>
         <Hero />

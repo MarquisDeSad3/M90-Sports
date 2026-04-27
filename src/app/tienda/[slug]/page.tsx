@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Sparkles, Truck } from "lucide-react"
@@ -6,18 +7,53 @@ import { ProductImage } from "@/components/admin/product-image"
 import { AddToCartForm } from "@/components/public/add-to-cart-form"
 import { getPublicProduct } from "@/lib/queries/public-products"
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+  "https://m90-sports.com"
+
 interface PageProps {
   params: Promise<{ slug: string }>
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params
   const product = await getPublicProduct(slug)
-  if (!product) return { title: "Producto no encontrado · M90" }
+  if (!product) {
+    return { title: "Producto no encontrado · M90", robots: { index: false } }
+  }
+
+  // Description that reads like a sentence Google can use as a snippet,
+  // not a marketing slogan. Strip user-entered HTML defensively.
+  const desc = product.description
+    ? product.description.replace(/<[^>]*>/g, "").slice(0, 160)
+    : `Camiseta ${product.name}. Envíos a toda Cuba — La Habana, Matanzas, Pinar, Mayabeque, Artemisa. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.`
+
+  const url = `${SITE_URL}/tienda/${product.slug}`
+  const image = product.primaryImageUrl
+    ? product.primaryImageUrl.startsWith("http")
+      ? product.primaryImageUrl
+      : `${SITE_URL}${product.primaryImageUrl}`
+    : `${SITE_URL}/brand/m90-red.png`
+
   return {
     title: `${product.name} · M90 Sports`,
-    description:
-      product.description ?? `${product.name} — Jerseys M90 Sports`,
+    description: desc,
+    alternates: { canonical: url },
+    openGraph: {
+      title: product.name,
+      description: desc,
+      url,
+      type: "website",
+      images: [{ url: image, alt: product.name }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: desc,
+      images: [image],
+    },
   }
 }
 
@@ -28,8 +64,48 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getPublicProduct(slug)
   if (!product) notFound()
 
+  const totalStock = product.variants.reduce((s, v) => s + v.stock, 0)
+  const availability =
+    totalStock > 0 || product.isPreorder
+      ? product.isPreorder
+        ? "https://schema.org/PreOrder"
+        : "https://schema.org/InStock"
+      : "https://schema.org/OutOfStock"
+
+  const productLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description:
+      product.description?.replace(/<[^>]*>/g, "") ??
+      `Camiseta ${product.name} — M90 Sports`,
+    sku: product.id,
+    brand: {
+      "@type": "Brand",
+      name: product.team || "M90 Sports",
+    },
+    offers: {
+      "@type": "Offer",
+      url: `${SITE_URL}/tienda/${product.slug}`,
+      priceCurrency: "USD",
+      price: product.basePrice.toFixed(2),
+      availability,
+      itemCondition: "https://schema.org/NewCondition",
+      seller: { "@type": "Organization", name: "M90 Sports" },
+    },
+  }
+  if (product.primaryImageUrl) {
+    productLd.image = product.primaryImageUrl.startsWith("http")
+      ? product.primaryImageUrl
+      : `${SITE_URL}${product.primaryImageUrl}`
+  }
+
   return (
     <main className="relative min-h-svh bg-[#f7ebc8]" style={{ color: M90_NAVY }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }}
+      />
       <Nav />
 
       <div className="mx-auto max-w-6xl px-5 pt-28 pb-2 md:px-8 md:pt-32">

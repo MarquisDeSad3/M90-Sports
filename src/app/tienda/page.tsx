@@ -7,9 +7,17 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export const metadata: Metadata = {
-  title: "Tienda · M90 Sports",
+  title: "Tienda",
   description:
-    "Jerseys NBA, fútbol y retro entregados en Cuba. Pago por Transfermóvil, Zelle o efectivo a la entrega.",
+    "Catálogo M90 Sports: jerseys NBA, fútbol, retro y selecciones, entregados a toda Cuba. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.",
+  alternates: { canonical: "/tienda" },
+  openGraph: {
+    title: "Tienda · M90 Sports",
+    description:
+      "Catálogo M90 Sports: jerseys NBA, fútbol, retro y selecciones — Cuba.",
+    url: "/tienda",
+    type: "website",
+  },
 }
 
 const M90_NAVY = "#011b53"
