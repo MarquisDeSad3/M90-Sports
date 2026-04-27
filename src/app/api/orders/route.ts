@@ -82,6 +82,8 @@ function buildWhatsAppMessage(opts: {
   customerName: string
   shippingSummary: string
   paymentMethod: string
+  trackingUrl: string
+  payUrl: string | null
 }) {
   const itemsLines = opts.items
     .map(
@@ -115,7 +117,12 @@ function buildWhatsAppMessage(opts: {
   lines.push(
     `Pago: ${paymentLabel[opts.paymentMethod] ?? opts.paymentMethod}`,
     `Dirección: ${opts.shippingSummary}`,
+    "",
+    `Estado del pedido: ${opts.trackingUrl}`,
   )
+  if (opts.payUrl) {
+    lines.push(`Subir comprobante: ${opts.payUrl}`)
+  }
   return lines.join("\n")
 }
 
@@ -382,6 +389,17 @@ export async function POST(request: Request) {
       .filter(Boolean)
       .join(", ")
 
+    // Public links the customer can revisit later. Cash-on-delivery
+    // doesn't need an upload page (no proof to send), so we omit it.
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+      "https://m90-sports.com"
+    const trackingUrl = `${siteUrl}/pedido/${orderNumber}`
+    const payUrl =
+      body.paymentMethod === "cash_on_delivery"
+        ? null
+        : `${siteUrl}/pedido/${orderNumber}/pagar`
+
     const message = buildWhatsAppMessage({
       orderNumber,
       items: snapshots.map((s) => ({
@@ -396,6 +414,8 @@ export async function POST(request: Request) {
       customerName: body.customer.name,
       shippingSummary,
       paymentMethod: body.paymentMethod,
+      trackingUrl,
+      payUrl,
     })
 
     const whatsappNumber =
