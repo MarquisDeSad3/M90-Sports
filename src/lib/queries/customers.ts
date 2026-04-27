@@ -1,7 +1,7 @@
 import "server-only"
 import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { customers, orders } from "@/lib/db/schema"
+import { addresses, customers, orders } from "@/lib/db/schema"
 
 export type CustomerSegment = "all" | "diaspora" | "cuba" | "vip" | "lapsed"
 
@@ -134,6 +134,135 @@ export interface CustomerCounts {
   cuba: number
   vip: number
   withAccount: number
+}
+
+export interface CustomerDetail extends CustomerRecord {
+  addresses: CustomerAddress[]
+  orders: CustomerOrderSummary[]
+  notesInternal: string | null
+}
+
+export interface CustomerAddress {
+  id: string
+  recipientName: string
+  phone: string
+  street: string
+  number: string | null
+  betweenStreets: string | null
+  neighborhood: string | null
+  municipality: string
+  province: string
+  reference: string | null
+  isDefault: boolean
+}
+
+export interface CustomerOrderSummary {
+  id: string
+  orderNumber: string
+  status: string
+  paymentStatus: string
+  fulfillmentStatus: string
+  total: number
+  currency: string
+  placedAt: Date
+  paidAt: Date | null
+  shippedAt: Date | null
+  deliveredAt: Date | null
+}
+
+export async function getCustomerDetail(
+  id: string,
+): Promise<CustomerDetail | null> {
+  try {
+    const customerRows = await db
+      .select()
+      .from(customers)
+      .where(and(isNull(customers.deletedAt), eq(customers.id, id)))
+      .limit(1)
+    const customer = customerRows[0]
+    if (!customer) return null
+
+    const [addressRows, orderRows, lastOrderResult] = await Promise.all([
+      db
+        .select()
+        .from(addresses)
+        .where(eq(addresses.customerId, id))
+        .orderBy(desc(addresses.isDefault), desc(addresses.createdAt)),
+      db
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          status: orders.status,
+          paymentStatus: orders.paymentStatus,
+          fulfillmentStatus: orders.fulfillmentStatus,
+          total: orders.total,
+          currency: orders.currency,
+          placedAt: orders.placedAt,
+          paidAt: orders.paidAt,
+          shippedAt: orders.shippedAt,
+          deliveredAt: orders.deliveredAt,
+        })
+        .from(orders)
+        .where(and(isNull(orders.deletedAt), eq(orders.customerId, id)))
+        .orderBy(desc(orders.placedAt))
+        .limit(50),
+      db
+        .select({ lastOrderAt: sql<Date | null>`MAX(${orders.placedAt})` })
+        .from(orders)
+        .where(and(isNull(orders.deletedAt), eq(orders.customerId, id))),
+    ])
+
+    return {
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
+      country: customer.country,
+      isDiaspora: customer.isDiaspora,
+      totalOrders: customer.totalOrders,
+      totalSpent: Number(customer.totalSpent),
+      hasAccount: customer.hasAccount,
+      marketingConsent: customer.marketingConsent,
+      notes: customer.notes,
+      notesInternal: customer.notes,
+      createdAt: customer.createdAt,
+      lastOrderAt: lastOrderResult[0]?.lastOrderAt
+        ? new Date(lastOrderResult[0].lastOrderAt as Date)
+        : null,
+      addresses: addressRows.map((a) => ({
+        id: a.id,
+        recipientName: a.recipientName,
+        phone: a.phone,
+        street: a.street,
+        number: a.number ?? null,
+        betweenStreets: a.betweenStreets ?? null,
+        neighborhood: a.neighborhood ?? null,
+        municipality: a.municipality,
+        province: String(a.province).replace(/_/g, " "),
+        reference: a.reference ?? null,
+        isDefault: a.isDefault,
+      })),
+      orders: orderRows.map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        paymentStatus: o.paymentStatus,
+        fulfillmentStatus: o.fulfillmentStatus,
+        total: Number(o.total),
+        currency: o.currency,
+        placedAt: o.placedAt,
+        paidAt: o.paidAt,
+        shippedAt: o.shippedAt,
+        deliveredAt: o.deliveredAt,
+      })),
+    }
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[customer-detail] DB unavailable in dev:", err)
+      return null
+    }
+    throw err
+  }
 }
 
 export async function getCustomerCounts(): Promise<CustomerCounts> {

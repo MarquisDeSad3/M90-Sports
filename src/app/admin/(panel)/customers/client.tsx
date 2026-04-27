@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   Crown,
@@ -174,7 +175,10 @@ function CustomerRow({ customer }: { customer: CustomerRecord }) {
   return (
     <tr className="transition-colors hover:bg-muted/20">
       <td className="px-3 py-3">
-        <div className="flex items-start gap-2">
+        <Link
+          href={`/admin/customers/${customer.id}`}
+          className="flex items-start gap-2 hover:text-primary"
+        >
           <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
             {initials(customer.name)}
           </div>
@@ -215,7 +219,7 @@ function CustomerRow({ customer }: { customer: CustomerRecord }) {
               )}
             </div>
           </div>
-        </div>
+        </Link>
       </td>
       <td className="px-3 py-3 text-xs text-muted-foreground">
         <div className="flex flex-col gap-0.5">
