@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Check, Loader2, ShoppingBag } from "lucide-react"
+import { Check, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCart, type CartItem } from "@/lib/cart/use-cart"
 import type { Size } from "@/lib/mock-data"
@@ -19,18 +19,32 @@ interface ProductForCart {
   isPreorder: boolean
 }
 
+export interface AddonPrices {
+  longSleeves: number
+  patches: number
+  personalization: number
+  personalizationDepositPct: number
+}
+
 const SIZE_LABEL: Record<string, string> = {
   XS: "XS",
   S: "S",
   M: "M",
   L: "L",
   XL: "XL",
-  XXL: "XXL",
+  XXL: "2XL",
   XXXL: "3XL",
+  XXXXL: "4XL",
   KIDS_S: "Niño S",
   KIDS_M: "Niño M",
   KIDS_L: "Niño L",
   KIDS_XL: "Niño XL",
+  KIDS_4: "4 años",
+  KIDS_6: "6 años",
+  KIDS_8: "8 años",
+  KIDS_10: "10 años",
+  KIDS_12: "12 años",
+  KIDS_14: "14 años",
   WOMEN_S: "Mujer S",
   WOMEN_M: "Mujer M",
   WOMEN_L: "Mujer L",
@@ -38,7 +52,13 @@ const SIZE_LABEL: Record<string, string> = {
   ONE_SIZE: "Única",
 }
 
-export function AddToCartForm({ product }: { product: ProductForCart }) {
+export function AddToCartForm({
+  product,
+  addonPrices,
+}: {
+  product: ProductForCart
+  addonPrices: AddonPrices
+}) {
   const { addItem } = useCart()
   const [selectedVariantId, setSelectedVariantId] = React.useState<string | null>(
     product.variants[0]?.id ?? null
@@ -46,13 +66,31 @@ export function AddToCartForm({ product }: { product: ProductForCart }) {
   const [quantity, setQuantity] = React.useState(1)
   const [justAdded, setJustAdded] = React.useState(false)
 
+  // Add-on selections
+  const [longSleeves, setLongSleeves] = React.useState(false)
+  const [patches, setPatches] = React.useState(false)
+  const [personalization, setPersonalization] = React.useState(false)
+  const [playerName, setPlayerName] = React.useState("")
+  const [playerNumber, setPlayerNumber] = React.useState("")
+
   const selectedVariant = product.variants.find((v) => v.id === selectedVariantId)
   const canBuy =
     selectedVariant !== undefined &&
     (product.isPreorder || selectedVariant.stock > 0)
 
+  const addOnTotal =
+    (longSleeves ? addonPrices.longSleeves : 0) +
+    (patches ? addonPrices.patches : 0) +
+    (personalization ? addonPrices.personalization : 0)
+
+  const baseUnit = selectedVariant?.price ?? product.basePrice
+  const lineUnit = baseUnit + addOnTotal
+
   const handleAdd = () => {
     if (!selectedVariant) return
+    const hasAddOns = longSleeves || patches || personalization
+    const trimmedName = playerName.trim()
+    const trimmedNumber = playerNumber.trim()
     const item: CartItem = {
       variantId: selectedVariant.id,
       productId: product.id,
@@ -64,6 +102,17 @@ export function AddToCartForm({ product }: { product: ProductForCart }) {
       unitPrice: selectedVariant.price,
       quantity,
       primaryImageUrl: product.primaryImageUrl,
+      addOns: hasAddOns
+        ? {
+            longSleeves,
+            patches,
+            playerName:
+              personalization && trimmedName ? trimmedName : undefined,
+            playerNumber:
+              personalization && trimmedNumber ? trimmedNumber : undefined,
+            total: addOnTotal,
+          }
+        : undefined,
     }
     addItem(item)
     setJustAdded(true)
@@ -147,6 +196,99 @@ export function AddToCartForm({ product }: { product: ProductForCart }) {
           </div>
         </div>
       )}
+
+      {/* Add-ons */}
+      <fieldset className="flex flex-col gap-2 rounded-xl border border-[rgba(1,27,83,0.12)] bg-white/60 p-4">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#011b53]/60">
+          Personaliza tu pedido
+        </legend>
+
+        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
+          <span className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={longSleeves}
+              onChange={(e) => setLongSleeves(e.target.checked)}
+              className="size-4 accent-[#011b53]"
+            />
+            <span className="text-sm text-[#011b53]">Mangas largas</span>
+          </span>
+          <span className="text-sm font-semibold tabular-nums text-[#980e21]">
+            +${addonPrices.longSleeves.toFixed(0)}
+          </span>
+        </label>
+
+        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
+          <span className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={patches}
+              onChange={(e) => setPatches(e.target.checked)}
+              className="size-4 accent-[#011b53]"
+            />
+            <span className="text-sm text-[#011b53]">Parches Champions/Liga</span>
+          </span>
+          <span className="text-sm font-semibold tabular-nums text-[#980e21]">
+            +${addonPrices.patches.toFixed(0)}
+          </span>
+        </label>
+
+        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
+          <span className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={personalization}
+              onChange={(e) => setPersonalization(e.target.checked)}
+              className="size-4 accent-[#011b53]"
+            />
+            <span className="text-sm text-[#011b53]">
+              Estampado nombre + dorsal
+            </span>
+          </span>
+          <span className="text-sm font-semibold tabular-nums text-[#980e21]">
+            +${addonPrices.personalization.toFixed(0)}
+          </span>
+        </label>
+
+        {personalization && (
+          <div className="mt-2 flex flex-col gap-2 rounded-lg bg-[rgba(1,27,83,0.04)] p-3">
+            <p className="text-[11px] text-[#011b53]/65">
+              Anticipo del {addonPrices.personalizationDepositPct}% requerido ·
+              +24h al tiempo de entrega
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="MESSI"
+                maxLength={16}
+                style={{ textTransform: "uppercase" }}
+                className="h-9 flex-1 rounded-md border border-[rgba(1,27,83,0.2)] bg-white px-2 text-sm font-mono uppercase tracking-wider text-[#011b53] outline-none focus:border-[#011b53]"
+              />
+              <input
+                type="text"
+                value={playerNumber}
+                onChange={(e) =>
+                  setPlayerNumber(e.target.value.replace(/[^\d]/g, "").slice(0, 2))
+                }
+                placeholder="10"
+                inputMode="numeric"
+                className="h-9 w-16 rounded-md border border-[rgba(1,27,83,0.2)] bg-white px-2 text-center text-sm font-mono tabular-nums text-[#011b53] outline-none focus:border-[#011b53]"
+              />
+            </div>
+          </div>
+        )}
+
+        {addOnTotal > 0 && (
+          <div className="mt-1 flex items-center justify-between border-t border-[rgba(1,27,83,0.08)] pt-2 text-xs font-semibold text-[#011b53]">
+            <span>Total con extras</span>
+            <span className="tabular-nums">
+              ${lineUnit.toFixed(2)} × {quantity} = ${(lineUnit * quantity).toFixed(2)}
+            </span>
+          </div>
+        )}
+      </fieldset>
 
       {/* Add to cart CTA */}
       <button

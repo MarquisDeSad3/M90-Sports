@@ -52,8 +52,11 @@ export const versionTypeEnum = pgEnum("version_type", [
 ])
 
 export const sizeEnum = pgEnum("size", [
-  "XS", "S", "M", "L", "XL", "XXL", "XXXL",
+  "XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL",
+  // Legacy kids buckets — kept so existing variants don't break, but
+  // new products use the age-specific KIDS_4..KIDS_14 below.
   "KIDS_S", "KIDS_M", "KIDS_L", "KIDS_XL",
+  "KIDS_4", "KIDS_6", "KIDS_8", "KIDS_10", "KIDS_12", "KIDS_14",
   "WOMEN_S", "WOMEN_M", "WOMEN_L", "WOMEN_XL",
   "ONE_SIZE",
 ])
@@ -491,6 +494,10 @@ export const orderItems = pgTable(
     quantity: integer("quantity").notNull(),
     unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
     subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
+    // Add-ons selected at checkout — null when none. Shape:
+    // { longSleeves: bool, patches: bool, playerName?: string,
+    //   playerNumber?: string, total: number }
+    addOns: jsonb("add_ons"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

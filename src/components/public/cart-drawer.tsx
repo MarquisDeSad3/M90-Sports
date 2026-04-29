@@ -9,7 +9,7 @@ import {
   ShoppingBag,
   Trash2,
 } from "lucide-react"
-import { useCart } from "@/lib/cart/use-cart"
+import { cartLineKey, useCart } from "@/lib/cart/use-cart"
 import { ProductImage } from "@/components/admin/product-image"
 import { cn } from "@/lib/utils"
 
@@ -19,12 +19,23 @@ const SIZE_LABEL: Record<string, string> = {
   M: "M",
   L: "L",
   XL: "XL",
-  XXL: "XXL",
+  XXL: "2XL",
   XXXL: "3XL",
+  XXXXL: "4XL",
   KIDS_S: "Niño S",
   KIDS_M: "Niño M",
   KIDS_L: "Niño L",
   KIDS_XL: "Niño XL",
+  KIDS_4: "4 años",
+  KIDS_6: "6 años",
+  KIDS_8: "8 años",
+  KIDS_10: "10 años",
+  KIDS_12: "12 años",
+  KIDS_14: "14 años",
+  WOMEN_S: "Mujer S",
+  WOMEN_M: "Mujer M",
+  WOMEN_L: "Mujer L",
+  WOMEN_XL: "Mujer XL",
   ONE_SIZE: "Única",
 }
 
@@ -152,12 +163,34 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <span className="text-[11px] text-[#011b53]/60">
                       Talla {SIZE_LABEL[it.size] ?? it.size} · ${it.unitPrice}
                     </span>
+                    {it.addOns && (
+                      <ul className="mt-0.5 flex flex-col gap-0.5 text-[10px] text-[#011b53]/55">
+                        {it.addOns.longSleeves && (
+                          <li>+ Mangas largas</li>
+                        )}
+                        {it.addOns.patches && (
+                          <li>+ Parches Champions/Liga</li>
+                        )}
+                        {(it.addOns.playerName || it.addOns.playerNumber) && (
+                          <li>
+                            + Estampado{" "}
+                            {it.addOns.playerName ?? ""}
+                            {it.addOns.playerNumber
+                              ? ` #${it.addOns.playerNumber}`
+                              : ""}
+                          </li>
+                        )}
+                        <li className="font-semibold text-[#011b53]/75 tabular-nums">
+                          + ${it.addOns.total.toFixed(2)} extras
+                        </li>
+                      </ul>
+                    )}
 
                     <div className="mt-1 flex items-center justify-between">
                       <div className="inline-flex items-center rounded-md border border-[rgba(1,27,83,0.18)] bg-white">
                         <button
                           type="button"
-                          onClick={() => updateQuantity(it.variantId, it.quantity - 1)}
+                          onClick={() => updateQuantity(cartLineKey(it), it.quantity - 1)}
                           className="grid size-7 place-items-center text-[#011b53] hover:bg-[rgba(1,27,83,0.05)]"
                           aria-label="Reducir"
                         >
@@ -168,7 +201,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                         </span>
                         <button
                           type="button"
-                          onClick={() => updateQuantity(it.variantId, it.quantity + 1)}
+                          onClick={() => updateQuantity(cartLineKey(it), it.quantity + 1)}
                           className="grid size-7 place-items-center text-[#011b53] hover:bg-[rgba(1,27,83,0.05)]"
                           aria-label="Aumentar"
                         >
@@ -177,7 +210,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => removeItem(it.variantId)}
+                        onClick={() => removeItem(cartLineKey(it))}
                         className="grid size-7 place-items-center rounded-md text-rose-600 hover:bg-rose-500/10"
                         aria-label="Eliminar"
                       >
@@ -187,7 +220,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                   </div>
 
                   <span className="font-display text-base tabular-nums">
-                    ${(it.unitPrice * it.quantity).toFixed(0)}
+                    ${((it.unitPrice + (it.addOns?.total ?? 0)) * it.quantity).toFixed(0)}
                   </span>
                 </li>
               ))}

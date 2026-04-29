@@ -24,6 +24,26 @@ const optionalTrimmed = (max: number) =>
     .optional()
     .or(z.literal("").transform(() => undefined))
 
+export const orderAddOnsSchema = z
+  .object({
+    longSleeves: z.boolean().optional(),
+    patches: z.boolean().optional(),
+    playerName: z
+      .string()
+      .trim()
+      .max(20)
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    playerNumber: z
+      .string()
+      .trim()
+      .regex(/^\d{1,3}$/, "Solo 1-3 dígitos")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    total: z.number().min(0).max(100),
+  })
+  .strict()
+
 export const orderItemSchema = z
   .object({
     // Variant IDs from createId() are var_<cuid2>, but legacy IDs from
@@ -38,6 +58,7 @@ export const orderItemSchema = z
       .int("Cantidad debe ser entero")
       .min(1, "Mínimo 1")
       .max(20, "Máximo 20 por línea"),
+    addOns: orderAddOnsSchema.optional(),
   })
   .strict()
 

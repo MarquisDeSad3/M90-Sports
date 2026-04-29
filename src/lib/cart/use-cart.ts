@@ -2,7 +2,23 @@
 
 import * as React from "react"
 
-const STORAGE_KEY = "m90-cart-v1"
+// Bumped from v1 → v2 because the CartItem shape gained `addOns` and
+// the dedup key now folds add-on selections in (so two of the same
+// variant with different patches stay as separate lines). v1 storage
+// still parses correctly because add-ons are optional.
+const STORAGE_KEY = "m90-cart-v2"
+const STORAGE_KEY_LEGACY = "m90-cart-v1"
+
+export interface CartAddOns {
+  longSleeves: boolean
+  patches: boolean
+  /** Customer-provided name to print on the back. */
+  playerName?: string
+  /** Customer-provided number to print on the back. */
+  playerNumber?: string
+  /** Sum of the per-unit add-on prices, in USD. */
+  total: number
+}
 
 export interface CartItem {
   variantId: string
@@ -12,15 +28,42 @@ export interface CartItem {
   team: string
   number?: string
   size: string
+  /** Base unit price — does NOT include add-ons. */
   unitPrice: number
   quantity: number
   primaryImageUrl?: string | null
+  addOns?: CartAddOns
+}
+
+/**
+ * Dedup key for cart lines. Same variantId with different add-ons
+ * lives as separate lines; identical selections merge. Personalization
+ * fields are part of the key so re-adding "Messi 10" doesn't collide
+ * with a plain version of the same shirt.
+ */
+export function cartLineKey(item: Pick<CartItem, "variantId" | "addOns">): string {
+  const a = item.addOns
+  if (!a) return item.variantId
+  return [
+    item.variantId,
+    a.longSleeves ? "ls" : "",
+    a.patches ? "pt" : "",
+    a.playerName ? `n=${a.playerName.toLowerCase().trim()}` : "",
+    a.playerNumber ? `#${a.playerNumber.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join("|")
 }
 
 function readCart(): CartItem[] {
   if (typeof window === "undefined") return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    let raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      // One-time migration from v1 — same shape, just under a new key.
+      raw = localStorage.getItem(STORAGE_KEY_LEGACY)
+      if (raw) localStorage.setItem(STORAGE_KEY, raw)
+    }
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
@@ -28,7 +71,7 @@ function readCart(): CartItem[] {
       (it): it is CartItem =>
         typeof it === "object" &&
         typeof it?.variantId === "string" &&
-        typeof it?.quantity === "number"
+        typeof it?.quantity === "number",
     )
   } catch {
     return []
@@ -49,10 +92,11 @@ export interface CartTotals {
 export function computeTotals(items: CartItem[]): CartTotals {
   return items.reduce<CartTotals>(
     (acc, it) => ({
-      subtotal: acc.subtotal + it.unitPrice * it.quantity,
+      subtotal:
+        acc.subtotal + (it.unitPrice + (it.addOns?.total ?? 0)) * it.quantity,
       itemCount: acc.itemCount + it.quantity,
     }),
-    { subtotal: 0, itemCount: 0 }
+    { subtotal: 0, itemCount: 0 },
   )
 }
 
@@ -73,12 +117,13 @@ export function useCart() {
 
   const addItem = React.useCallback((item: CartItem) => {
     setItems((current) => {
-      const existing = current.find((i) => i.variantId === item.variantId)
+      const key = cartLineKey(item)
+      const existing = current.find((i) => cartLineKey(i) === key)
       const next = existing
         ? current.map((i) =>
-            i.variantId === item.variantId
+            cartLineKey(i) === key
               ? { ...i, quantity: i.quantity + item.quantity }
-              : i
+              : i,
           )
         : [...current, item]
       writeCart(next)
@@ -87,25 +132,25 @@ export function useCart() {
   }, [])
 
   const updateQuantity = React.useCallback(
-    (variantId: string, quantity: number) => {
+    (lineKey: string, quantity: number) => {
       setItems((current) => {
         const next = current
           .map((i) =>
-            i.variantId === variantId
+            cartLineKey(i) === lineKey
               ? { ...i, quantity: Math.max(0, Math.min(20, quantity)) }
-              : i
+              : i,
           )
           .filter((i) => i.quantity > 0)
         writeCart(next)
         return next
       })
     },
-    []
+    [],
   )
 
-  const removeItem = React.useCallback((variantId: string) => {
+  const removeItem = React.useCallback((lineKey: string) => {
     setItems((current) => {
-      const next = current.filter((i) => i.variantId !== variantId)
+      const next = current.filter((i) => cartLineKey(i) !== lineKey)
       writeCart(next)
       return next
     })

@@ -14,6 +14,7 @@ import {
   getApprovedReviews,
   getProductRatingSummary,
 } from "@/lib/queries/public-reviews"
+import { getSettingValues } from "@/lib/queries/settings"
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -72,10 +73,25 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getPublicProduct(slug)
   if (!product) notFound()
 
-  const [reviews, ratingSummary] = await Promise.all([
+  const [reviews, ratingSummary, addonSettings] = await Promise.all([
     getApprovedReviews(product.id),
     getProductRatingSummary(product.id),
+    getSettingValues([
+      "addon.longSleevesPrice",
+      "addon.patchesPrice",
+      "addon.personalizationPrice",
+      "addon.personalizationDepositPct",
+    ]),
   ])
+
+  const addonPrices = {
+    longSleeves: Number(addonSettings["addon.longSleevesPrice"] ?? 1),
+    patches: Number(addonSettings["addon.patchesPrice"] ?? 3),
+    personalization: Number(addonSettings["addon.personalizationPrice"] ?? 5),
+    personalizationDepositPct: Number(
+      addonSettings["addon.personalizationDepositPct"] ?? 50,
+    ),
+  }
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0)
   const availability =
@@ -229,6 +245,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
               variants: product.variants,
               isPreorder: product.isPreorder,
             }}
+            addonPrices={addonPrices}
           />
 
           {/* Trust signals */}

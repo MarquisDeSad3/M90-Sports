@@ -22,10 +22,22 @@ export type Size =
   | "XL"
   | "XXL"
   | "XXXL"
+  | "XXXXL"
   | "KIDS_S"
   | "KIDS_M"
   | "KIDS_L"
   | "KIDS_XL"
+  | "KIDS_4"
+  | "KIDS_6"
+  | "KIDS_8"
+  | "KIDS_10"
+  | "KIDS_12"
+  | "KIDS_14"
+  | "WOMEN_S"
+  | "WOMEN_M"
+  | "WOMEN_L"
+  | "WOMEN_XL"
+  | "ONE_SIZE"
 
 export interface MockVariant {
   id: string

@@ -64,7 +64,19 @@ async function nextOrderNumber(): Promise<string> {
 
 function buildWhatsAppMessage(opts: {
   orderNumber: string
-  items: { name: string; size: string; quantity: number; subtotal: number }[]
+  items: {
+    name: string
+    size: string
+    quantity: number
+    subtotal: number
+    addOns?: {
+      longSleeves?: boolean
+      patches?: boolean
+      playerName?: string
+      playerNumber?: string
+      total: number
+    }
+  }[]
   total: number
   depositAmount: number | null
   balanceAmount: number | null
@@ -74,11 +86,33 @@ function buildWhatsAppMessage(opts: {
   trackingUrl: string
   payUrl: string | null
 }) {
+  const sizeLabel = (s: string): string => {
+    if (s.startsWith("KIDS_")) {
+      const rest = s.slice(5)
+      // Numeric (4..14) → "X años"; legacy S/M/L/XL → "Niño X"
+      return /^\d+$/.test(rest) ? `${rest} años` : `Niño ${rest}`
+    }
+    if (s.startsWith("WOMEN_")) return `Mujer ${s.slice(6)}`
+    if (s === "XXXXL") return "4XL"
+    if (s === "XXXL") return "3XL"
+    if (s === "XXL") return "2XL"
+    if (s === "ONE_SIZE") return "Única"
+    return s
+  }
   const itemsLines = opts.items
-    .map(
-      (it) =>
-        `• ${it.quantity}× ${it.name} (talla ${it.size.replace("KIDS_", "Niño ")}) — $${it.subtotal.toFixed(0)}`,
-    )
+    .map((it) => {
+      const head = `• ${it.quantity}× ${it.name} (talla ${sizeLabel(it.size)}) — $${it.subtotal.toFixed(0)}`
+      if (!it.addOns) return head
+      const extras: string[] = []
+      if (it.addOns.longSleeves) extras.push("mangas largas")
+      if (it.addOns.patches) extras.push("parches")
+      if (it.addOns.playerName || it.addOns.playerNumber) {
+        const n = it.addOns.playerName ?? ""
+        const num = it.addOns.playerNumber ? `#${it.addOns.playerNumber}` : ""
+        extras.push(`estampado ${n} ${num}`.trim())
+      }
+      return extras.length > 0 ? `${head}\n   + ${extras.join(", ")}` : head
+    })
     .join("\n")
   const paymentLabel: Record<string, string> = {
     transfermovil: "Transfermóvil",
@@ -232,9 +266,51 @@ export async function POST(request: Request) {
   }
 
   // 8. Build snapshot items + totals.
+  // Pull add-on prices from settings — never trust client-supplied
+  // amounts. The schema's `total` field on the request is informational
+  // for the client UI; on the server we re-compute from the source of
+  // truth.
+  const addonSettings = await getSettingValues([
+    "addon.longSleevesPrice",
+    "addon.patchesPrice",
+    "addon.personalizationPrice",
+  ])
+  const addonPrices = {
+    longSleeves: Number(addonSettings["addon.longSleevesPrice"] ?? 1),
+    patches: Number(addonSettings["addon.patchesPrice"] ?? 3),
+    personalization: Number(addonSettings["addon.personalizationPrice"] ?? 5),
+  }
+
   const snapshots = body.items.map((it) => {
     const v = variantRows.find((x) => x.id === it.variantId)!
     const unitPrice = Number(v.price ?? v.basePrice)
+
+    // Re-compute add-on total server-side. We trust the boolean flags
+    // and the (sanitized) personalization fields, but the dollar amount
+    // is OURS — anything else opens the door to a $0 personalization.
+    let addOns: typeof it.addOns = undefined
+    let addOnTotal = 0
+    if (it.addOns) {
+      const longSleeves = !!it.addOns.longSleeves
+      const patches = !!it.addOns.patches
+      const hasName = !!it.addOns.playerName
+      const hasNumber = !!it.addOns.playerNumber
+      const personalization = hasName || hasNumber
+      addOnTotal =
+        (longSleeves ? addonPrices.longSleeves : 0) +
+        (patches ? addonPrices.patches : 0) +
+        (personalization ? addonPrices.personalization : 0)
+      if (longSleeves || patches || personalization) {
+        addOns = {
+          longSleeves,
+          patches,
+          playerName: it.addOns.playerName,
+          playerNumber: it.addOns.playerNumber,
+          total: addOnTotal,
+        }
+      }
+    }
+
     return {
       variantId: v.id,
       productId: v.productId,
@@ -243,11 +319,14 @@ export async function POST(request: Request) {
       sku: v.sku,
       quantity: Math.max(1, Math.min(20, Math.floor(it.quantity || 1))),
       unitPrice,
+      addOns,
+      addOnTotal,
+      lineUnit: unitPrice + addOnTotal,
       isPreorder: v.productIsPreorder,
     }
   })
   const subtotal = snapshots.reduce(
-    (s, it) => s + it.unitPrice * it.quantity,
+    (s, it) => s + it.lineUnit * it.quantity,
     0,
   )
 
@@ -397,7 +476,8 @@ export async function POST(request: Request) {
           sku: s.sku,
           quantity: s.quantity,
           unitPrice: String(s.unitPrice),
-          subtotal: String(s.unitPrice * s.quantity),
+          subtotal: String(s.lineUnit * s.quantity),
+          addOns: s.addOns ?? null,
         })),
       )
 
@@ -445,7 +525,8 @@ export async function POST(request: Request) {
         name: s.productName,
         size: s.size,
         quantity: s.quantity,
-        subtotal: s.unitPrice * s.quantity,
+        subtotal: s.lineUnit * s.quantity,
+        addOns: s.addOns,
       })),
       total,
       depositAmount,

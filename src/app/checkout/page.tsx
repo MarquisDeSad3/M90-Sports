@@ -118,6 +118,15 @@ export default function CheckoutPage() {
           items: items.map((it) => ({
             variantId: it.variantId,
             quantity: it.quantity,
+            addOns: it.addOns
+              ? {
+                  longSleeves: it.addOns.longSleeves,
+                  patches: it.addOns.patches,
+                  playerName: it.addOns.playerName,
+                  playerNumber: it.addOns.playerNumber,
+                  total: it.addOns.total,
+                }
+              : undefined,
           })),
           customer: {
             name: customerName.trim(),

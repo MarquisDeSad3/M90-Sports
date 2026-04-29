@@ -28,12 +28,16 @@ const SIZE_OPTIONS: { value: Size; label: string; group: string }[] = [
   { value: "M", label: "M", group: "Adulto" },
   { value: "L", label: "L", group: "Adulto" },
   { value: "XL", label: "XL", group: "Adulto" },
-  { value: "XXL", label: "XXL", group: "Adulto" },
-  { value: "XXXL", label: "XXXL", group: "Adulto" },
-  { value: "KIDS_S", label: "Niño S", group: "Niños" },
-  { value: "KIDS_M", label: "Niño M", group: "Niños" },
-  { value: "KIDS_L", label: "Niño L", group: "Niños" },
-  { value: "KIDS_XL", label: "Niño XL", group: "Niños" },
+  { value: "XXL", label: "2XL", group: "Adulto" },
+  { value: "XXXL", label: "3XL", group: "Adulto" },
+  { value: "XXXXL", label: "4XL", group: "Adulto" },
+  { value: "KIDS_4", label: "4 años", group: "Niños" },
+  { value: "KIDS_6", label: "6 años", group: "Niños" },
+  { value: "KIDS_8", label: "8 años", group: "Niños" },
+  { value: "KIDS_10", label: "10 años", group: "Niños" },
+  { value: "KIDS_12", label: "12 años", group: "Niños" },
+  { value: "KIDS_14", label: "14 años", group: "Niños" },
+  { value: "ONE_SIZE", label: "Talla única", group: "Otros" },
 ]
 
 interface VariantsEditorProps {
