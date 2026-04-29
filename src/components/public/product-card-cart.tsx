@@ -222,7 +222,7 @@ export function ProductCardCart({ product }: { product: PublicProduct }) {
       {needsQuote ? (
         <a
           href={`https://wa.me/5363285022?text=${encodeURIComponent(
-            `Hola M90, me interesa este producto: ${product.name}.\n\n¿Cuánto cuesta y cuándo llega?`,
+            `Hola M90, me interesa este producto:\n\n${product.name}\nhttps://m90-sports.com/tienda/${product.slug}\n\n¿Cuánto cuesta y cuándo llega?`,
           )}`}
           target="_blank"
           rel="noopener noreferrer"

@@ -230,7 +230,7 @@ function ChipButton({
 function PreorderCard({ product }: { product: PublicPreorderProduct }) {
   const needsQuote = product.basePrice === 0
   const waMessage = encodeURIComponent(
-    `Hola M90, me interesa este producto: ${product.name}.\n\n¿Cuánto cuesta y cuándo llega?`,
+    `Hola M90, me interesa este producto:\n\n${product.name}\nhttps://m90-sports.com/tienda/${product.slug}\n\n¿Cuánto cuesta y cuándo llega?`,
   )
 
   return (
