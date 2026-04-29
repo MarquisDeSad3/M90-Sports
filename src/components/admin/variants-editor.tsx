@@ -37,6 +37,18 @@ const SIZE_OPTIONS: { value: Size; label: string; group: string }[] = [
   { value: "KIDS_10", label: "10 años", group: "Niños" },
   { value: "KIDS_12", label: "12 años", group: "Niños" },
   { value: "KIDS_14", label: "14 años", group: "Niños" },
+  { value: "EU_36", label: "EU 36", group: "Zapatos" },
+  { value: "EU_37", label: "EU 37", group: "Zapatos" },
+  { value: "EU_38", label: "EU 38", group: "Zapatos" },
+  { value: "EU_39", label: "EU 39", group: "Zapatos" },
+  { value: "EU_40", label: "EU 40", group: "Zapatos" },
+  { value: "EU_41", label: "EU 41", group: "Zapatos" },
+  { value: "EU_42", label: "EU 42", group: "Zapatos" },
+  { value: "EU_43", label: "EU 43", group: "Zapatos" },
+  { value: "EU_44", label: "EU 44", group: "Zapatos" },
+  { value: "EU_45", label: "EU 45", group: "Zapatos" },
+  { value: "EU_46", label: "EU 46", group: "Zapatos" },
+  { value: "EU_47", label: "EU 47", group: "Zapatos" },
   { value: "ONE_SIZE", label: "Talla única", group: "Otros" },
 ]
 

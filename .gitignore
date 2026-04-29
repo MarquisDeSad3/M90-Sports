@@ -60,3 +60,5 @@ yarn-error.log*
 # OS
 ehthumbs.db
 Desktop.ini
+
+.env*.local

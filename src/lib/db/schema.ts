@@ -58,6 +58,9 @@ export const sizeEnum = pgEnum("size", [
   "KIDS_S", "KIDS_M", "KIDS_L", "KIDS_XL",
   "KIDS_4", "KIDS_6", "KIDS_8", "KIDS_10", "KIDS_12", "KIDS_14",
   "WOMEN_S", "WOMEN_M", "WOMEN_L", "WOMEN_XL",
+  // EU shoe sizes 36-47 — used by the encargo-zapatos catalog.
+  "EU_36", "EU_37", "EU_38", "EU_39", "EU_40", "EU_41", "EU_42",
+  "EU_43", "EU_44", "EU_45", "EU_46", "EU_47",
   "ONE_SIZE",
 ])
 

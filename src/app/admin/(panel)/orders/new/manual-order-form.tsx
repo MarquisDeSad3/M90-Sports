@@ -92,6 +92,18 @@ const SIZE_LABEL: Record<string, string> = {
   KIDS_10: "10 años",
   KIDS_12: "12 años",
   KIDS_14: "14 años",
+  EU_36: "EU 36",
+  EU_37: "EU 37",
+  EU_38: "EU 38",
+  EU_39: "EU 39",
+  EU_40: "EU 40",
+  EU_41: "EU 41",
+  EU_42: "EU 42",
+  EU_43: "EU 43",
+  EU_44: "EU 44",
+  EU_45: "EU 45",
+  EU_46: "EU 46",
+  EU_47: "EU 47",
   ONE_SIZE: "Única",
 }
 

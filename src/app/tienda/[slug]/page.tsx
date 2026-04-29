@@ -81,6 +81,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
       "addon.patchesPrice",
       "addon.personalizationPrice",
       "addon.personalizationDepositPct",
+      "shoeAddon.originalBoxPrice",
+      "shoeAddon.extraStudsPrice",
+      "shoeAddon.embroideryPrice",
     ]),
   ])
 
@@ -92,6 +95,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
       addonSettings["addon.personalizationDepositPct"] ?? 50,
     ),
   }
+  const shoeAddonPrices = {
+    originalBox: Number(addonSettings["shoeAddon.originalBoxPrice"] ?? 5),
+    extraStuds: Number(addonSettings["shoeAddon.extraStudsPrice"] ?? 3),
+    embroidery: Number(addonSettings["shoeAddon.embroideryPrice"] ?? 5),
+  }
+  // Shoe products are tagged into the cat_enc_zapatos category by the
+  // yhc importer. Detecting via the categoryIds array means admins
+  // can also flip a non-yhc product into "Zapatos" and it'll get the
+  // shoe add-on UI automatically.
+  const isShoe = product.categoryIds.includes("cat_enc_zapatos")
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0)
   const availability =
@@ -246,6 +259,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
               isPreorder: product.isPreorder,
             }}
             addonPrices={addonPrices}
+            shoeAddonPrices={shoeAddonPrices}
+            isShoe={isShoe}
           />
 
           {/* Trust signals */}
