@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Check, ShoppingBag } from "lucide-react"
+import { Check, MessageCircle, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCart, type CartItem } from "@/lib/cart/use-cart"
 import type { Size } from "@/lib/mock-data"
@@ -157,6 +157,34 @@ export function AddToCartForm({
     return (
       <div className="rounded-xl border-2 border-dashed border-rose-500/30 bg-rose-500/5 p-4 text-center text-sm text-rose-700">
         Sin variantes disponibles. Escríbenos por WhatsApp.
+      </div>
+    )
+  }
+
+  // Preorder products bypass the cart entirely — they're "ask for a
+  // quote" only. Stock-status, sizes and add-ons are handled in the
+  // WhatsApp conversation, so we hide all of that and replace the
+  // form with a single green CTA matching the card buttons.
+  if (product.isPreorder) {
+    const waMessage = encodeURIComponent(
+      `Hola M90, me interesa este producto:\n\n${product.name}\nhttps://m90-sports.com/tienda/${product.slug}\n\n¿Cuánto cuesta y cuándo llega?`,
+    )
+    return (
+      <div className="flex flex-col gap-3">
+        <a
+          href={`https://wa.me/5363285022?text=${waMessage}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 text-sm font-semibold text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:brightness-95"
+        >
+          <MessageCircle className="size-4" />
+          Cotizar por WhatsApp
+        </a>
+        <p className="text-center text-[11px] leading-relaxed text-[#011b53]/65">
+          Este producto va por encargo. Llegada a Cuba en 25-30 días + 1-2
+          semanas a tu provincia. Confirmamos precio, talla y tiempo por
+          WhatsApp antes de que pagues nada.
+        </p>
       </div>
     )
   }
