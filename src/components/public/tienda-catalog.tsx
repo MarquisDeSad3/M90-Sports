@@ -90,7 +90,7 @@ export function TiendaCatalog({ products }: Props) {
             escríbenos por WhatsApp para pedir uno específico.
           </p>
           <a
-            href="https://wa.me/5351191461?text=Hola%20M90%2C%20quiero%20saber%20cuándo%20añaden%20más%20productos"
+            href="https://wa.me/5363285022?text=Hola%20M90%2C%20quiero%20saber%20cuándo%20añaden%20más%20productos"
             target="_blank"
             rel="noopener"
             className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#011b53] px-5 py-2.5 text-xs font-semibold text-[#efd9a3] transition-transform hover:-translate-y-0.5"
@@ -176,7 +176,7 @@ export function TiendaCatalog({ products }: Props) {
                 : "Sin productos en esta categoría todavía."}
             </p>
             <a
-              href={`https://wa.me/5351191461?text=${encodeURIComponent(
+              href={`https://wa.me/5363285022?text=${encodeURIComponent(
                 search
                   ? `Hola M90, ¿tienen "${search}"?`
                   : "Hola M90, ¿qué pueden conseguirme?",

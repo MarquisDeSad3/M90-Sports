@@ -49,7 +49,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   business: {
     name: "M90 Sports",
     email: "ever@m90-sports.com",
-    whatsappNumber: "5351191461",
+    whatsappNumber: "5363285022",
     whatsappDefaultMessage: "Hola M90, me interesa una camiseta.",
   },
   payments: {

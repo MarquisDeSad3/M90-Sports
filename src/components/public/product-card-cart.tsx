@@ -198,7 +198,7 @@ export function ProductCardCart({ product }: { product: PublicProduct }) {
       {/* CTA */}
       {needsQuote ? (
         <a
-          href={`https://wa.me/5351191461?text=${encodeURIComponent(
+          href={`https://wa.me/5363285022?text=${encodeURIComponent(
             `Hola M90, me interesa este producto: ${product.name}.\n\n¿Cuánto cuesta y cuándo llega?`,
           )}`}
           target="_blank"

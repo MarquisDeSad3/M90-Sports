@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Sparkles, Truck } from "lucide-react"
+import { ArrowLeft, BadgeCheck, Sparkles, Truck } from "lucide-react"
 import { Nav } from "@/components/nav"
 import { ProductImage } from "@/components/admin/product-image"
 import { AddToCartForm } from "@/components/public/add-to-cart-form"
@@ -36,7 +36,7 @@ export async function generateMetadata({
   // not a marketing slogan. Strip user-entered HTML defensively.
   const desc = product.description
     ? product.description.replace(/<[^>]*>/g, "").slice(0, 160)
-    : `Camiseta ${product.name}. Envíos a toda Cuba — La Habana, Matanzas, Pinar, Mayabeque, Artemisa. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.`
+    : `Camiseta ${product.name}. Envíos a las 16 provincias de Cuba con seguimiento. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.`
 
   const url = `${SITE_URL}/tienda/${product.slug}`
   const image = product.primaryImageUrl
@@ -232,15 +232,28 @@ export default async function ProductDetailPage({ params }: PageProps) {
           />
 
           {/* Trust signals */}
-          <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[rgba(1,27,83,0.08)] bg-white/60 p-4">
+          <div className="mt-2 flex flex-col gap-2.5 rounded-xl border border-[rgba(1,27,83,0.08)] bg-white/60 p-4">
+            <div className="flex items-start gap-2.5">
+              <BadgeCheck className="mt-0.5 size-4 shrink-0 text-[#011b53]/70" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold">
+                  Calidad 1:1 garantizada
+                </span>
+                <span className="text-xs text-[#011b53]/65">
+                  Camisetas en versiones fan y jugador, calidad 1:1. El resto
+                  de los artículos son originales.
+                </span>
+              </div>
+            </div>
             <div className="flex items-start gap-2.5">
               <Truck className="mt-0.5 size-4 shrink-0 text-[#011b53]/70" />
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-semibold">
-                  Envío a toda Cuba occidental
+                  Envíos a las 16 provincias de Cuba
                 </span>
                 <span className="text-xs text-[#011b53]/65">
-                  La Habana, Matanzas, Pinar del Río, Mayabeque y Artemisa
+                  Mensajería con seguimiento. Tarifa y tiempo se confirman por
+                  WhatsApp antes del pago.
                 </span>
               </div>
             </div>

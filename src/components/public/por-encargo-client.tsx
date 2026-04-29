@@ -294,7 +294,7 @@ function PreorderCard({ product }: { product: PublicPreorderProduct }) {
       </div>
 
       <a
-        href={`https://wa.me/5351191461?text=${waMessage}`}
+        href={`https://wa.me/5363285022?text=${waMessage}`}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-1 inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#25D366] text-xs font-semibold text-white transition-all hover:-translate-y-0.5 hover:brightness-95"

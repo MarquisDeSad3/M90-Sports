@@ -10,56 +10,65 @@ type Category = {
   photo: string;
 };
 
-// Photos reused from the official M90 Base44 app (Unsplash stock).
+// Photos from Unsplash (free for commercial use). Each one matches the
+// category vibe — football kit close-ups, sneaker macros, etc.
 const UNSPLASH = {
-  a: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=1600&q=80",
-  b: "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=1600&q=80",
-  c: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1600&q=80",
-  d: "https://images.unsplash.com/photo-1577212017184-80cc0da11082?w=1600&q=80",
+  clubes: "https://images.unsplash.com/photo-1577471488278-16eec37ffcc2?w=1600&q=80",
+  selecciones: "https://images.unsplash.com/photo-1602773692589-bd06d1d96cb1?w=1600&q=80",
+  retro: "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=1600&q=80",
+  zapatillas: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1600&q=80",
+  accesorios: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1600&q=80",
+  otros: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1600&q=80",
 };
 
 const CATEGORIES: Category[] = [
   {
     slug: "clubes",
     title: "Clubes",
-    count: "+240 modelos",
-    statement: "Del Bernabéu al Camp Nou. Todas las camisetas que definen tu lealtad.",
-    photo: UNSPLASH.c,
+    count: "Camisetas 1:1",
+    statement:
+      "Del Bernabéu al Camp Nou. Versiones fan y jugador en calidad 1:1.",
+    photo: UNSPLASH.clubes,
   },
   {
     slug: "selecciones",
     title: "Selecciones",
-    count: "+80 modelos",
-    statement: "Copa América, Eurocopa, Mundial. Los colores que levantan una nación.",
-    photo: UNSPLASH.a,
+    count: "Mundial · Copa",
+    statement:
+      "Copa América, Eurocopa, Mundial. Los colores que levantan una nación.",
+    photo: UNSPLASH.selecciones,
   },
   {
     slug: "retro",
     title: "Retro",
-    count: "clásicos 90s",
-    statement: "Del Piero 97, Ronaldinho 06, Bergkamp 98. Edición limitada, se van.",
-    photo: UNSPLASH.b,
+    count: "Clásicos 90s",
+    statement:
+      "Del Piero 97, Ronaldinho 06, Bergkamp 98. Edición limitada, se van.",
+    photo: UNSPLASH.retro,
   },
   {
-    slug: "nba",
-    title: "NBA",
-    count: "+60 jerseys",
-    statement: "Swingman oficial y retro de colección. Kobe, Jordan, LeBron.",
-    photo: UNSPLASH.d,
-  },
-  {
-    slug: "ninos",
-    title: "Niños",
-    count: "tallas 4–14",
-    statement: "Equipación completa para los que vienen pisando fuerte.",
-    photo: UNSPLASH.c,
+    slug: "zapatillas",
+    title: "Zapatillas",
+    count: "Originales",
+    statement:
+      "Sneakers y botines originales. Lo que se pone el que sabe.",
+    photo: UNSPLASH.zapatillas,
   },
   {
     slug: "accesorios",
     title: "Accesorios",
-    count: "balones · medias",
-    statement: "Balones oficiales, medias, espinilleras, guantes de arquero.",
-    photo: UNSPLASH.b,
+    count: "Bufandas · llaveros",
+    statement:
+      "Bufandas, llaveros, parches. Detalles que rematan el outfit.",
+    photo: UNSPLASH.accesorios,
+  },
+  {
+    slug: "otros",
+    title: "Otros deportes",
+    count: "NBA · MLB · F1",
+    statement:
+      "Basket, béisbol, F1 y más. Lo que el resto no consigue, M90 sí.",
+    photo: UNSPLASH.otros,
   },
 ];
 

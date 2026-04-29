@@ -68,7 +68,7 @@ export default async function PublicReviewsPage() {
           M90 Sports
         </Link>
         <a
-          href="https://wa.me/5351191461"
+          href="https://wa.me/5363285022"
           target="_blank"
           rel="noopener"
           className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
@@ -190,7 +190,7 @@ export default async function PublicReviewsPage() {
           una foto. La publicamos sin editar — palabra cubana.
         </p>
         <a
-          href="https://wa.me/5351191461?text=Hola%20M90%2C%20quiero%20dejar%20una%20rese%C3%B1a%20de%20mi%20pedido"
+          href="https://wa.me/5363285022?text=Hola%20M90%2C%20quiero%20dejar%20una%20rese%C3%B1a%20de%20mi%20pedido"
           target="_blank"
           rel="noopener"
           className="mt-2 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-transform hover:-translate-y-0.5"

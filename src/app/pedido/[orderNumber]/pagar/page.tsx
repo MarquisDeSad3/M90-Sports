@@ -120,7 +120,7 @@ export default async function PagarPage({ params }: PageProps) {
             Escríbenos por WhatsApp y te ayudamos a coordinar el pago.
           </p>
           <a
-            href={`https://wa.me/5351191461?text=${encodeURIComponent(
+            href={`https://wa.me/5363285022?text=${encodeURIComponent(
               `Hola M90, necesito ayuda con el pago del pedido #${order.orderNumber}`,
             )}`}
             target="_blank"

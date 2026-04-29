@@ -50,7 +50,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
           </Field>
           <Field
             label="Número de WhatsApp"
-            hint="Sin espacios ni guiones — ej: 5351191461"
+            hint="Sin espacios ni guiones — ej: 5363285022"
           >
             <Input
               name="business.whatsappNumber"

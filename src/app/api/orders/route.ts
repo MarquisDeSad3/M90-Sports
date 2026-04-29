@@ -98,7 +98,7 @@ function buildWhatsAppMessage(opts: {
       `Total: $${opts.total.toFixed(0)}`,
       `→ A pagar ahora: $${opts.depositAmount.toFixed(0)}`,
       `→ A pagar al recibir: $${opts.balanceAmount.toFixed(0)}`,
-      "(pedido por encargo — entre 15 y 25 días)",
+      "(pedido por encargo — llega a Cuba en 25-30 días + 1-2 semanas a tu provincia)",
     )
   } else {
     lines.push(`Total: $${opts.total.toFixed(0)}`)
@@ -458,7 +458,7 @@ export async function POST(request: Request) {
     })
 
     const whatsappNumber =
-      process.env.M90_WHATSAPP_NUMBER?.replace(/[^\d]/g, "") ?? "5351191461"
+      process.env.M90_WHATSAPP_NUMBER?.replace(/[^\d]/g, "") ?? "5363285022"
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
       message,
     )}`

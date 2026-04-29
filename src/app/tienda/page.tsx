@@ -44,9 +44,8 @@ export default async function TiendaPage() {
             <span style={{ color: "#980e21" }}>cuentan historias</span>
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-[#011b53]/75 md:text-base">
-            Pídelos por WhatsApp y los enviamos a toda Cuba — La Habana, Matanzas,
-            Pinar del Río, Mayabeque y Artemisa. Pago Transfermóvil, Zelle, PayPal
-            o efectivo a la entrega.
+            Pídelos por WhatsApp y los enviamos a las 16 provincias de Cuba con
+            seguimiento. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.
           </p>
         </div>
       </section>

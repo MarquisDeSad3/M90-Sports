@@ -7,9 +7,9 @@ import type { PublicShippingZone } from "@/lib/queries/public-shipping";
 
 const PAYMENTS = [
   { name: "Transfermóvil", icon: "TM" },
-  { name: "MLC", icon: "$" },
-  { name: "CUP efectivo", icon: "₱" },
-  { name: "USD efectivo", icon: "$" },
+  { name: "Zelle", icon: "Z" },
+  { name: "PayPal", icon: "PP" },
+  { name: "Efectivo", icon: "$" },
 ];
 
 interface ShippingProps {

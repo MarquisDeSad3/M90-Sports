@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s · M90 Sports",
   },
   description:
-    "Camisetas oficiales, retro y selecciones. Envíos a toda Cuba — La Habana, Matanzas, Pinar, Mayabeque y Artemisa. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.",
+    "Camisetas oficiales, retro y selecciones. Envíos a las 16 provincias de Cuba con seguimiento. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.",
   applicationName: "M90 Sports",
   keywords: [
     "jerseys Cuba",

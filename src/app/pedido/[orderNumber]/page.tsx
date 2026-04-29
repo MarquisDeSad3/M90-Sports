@@ -324,7 +324,7 @@ export default async function PublicOrderPage({ params }: PageProps) {
             respondemos rápido.
           </p>
           <a
-            href={`https://wa.me/5351191461?text=${encodeURIComponent(
+            href={`https://wa.me/5363285022?text=${encodeURIComponent(
               `Hola M90, tengo una pregunta sobre el pedido #${order.orderNumber}`,
             )}`}
             target="_blank"
