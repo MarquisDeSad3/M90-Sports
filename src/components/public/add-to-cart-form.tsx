@@ -95,11 +95,10 @@ export function AddToCartForm({
   const [playerName, setPlayerName] = React.useState("")
   const [playerNumber, setPlayerNumber] = React.useState("")
 
-  // Shoe add-ons
-  const [originalBox, setOriginalBox] = React.useState(false)
-  const [extraStuds, setExtraStuds] = React.useState(false)
-  const [embroidery, setEmbroidery] = React.useState(false)
-  const [embroideryInitials, setEmbroideryInitials] = React.useState("")
+  // Shoe add-ons reserved for the future; keep the shoe price prop
+  // around so settings can still be edited even though we don't render
+  // the toggles right now.
+  void shoeAddonPrices
 
   const selectedVariant = product.variants.find((v) => v.id === selectedVariantId)
   const canBuy =
@@ -107,9 +106,7 @@ export function AddToCartForm({
     (product.isPreorder || selectedVariant.stock > 0)
 
   const addOnTotal = isShoe
-    ? (originalBox ? shoeAddonPrices.originalBox : 0) +
-      (extraStuds ? shoeAddonPrices.extraStuds : 0) +
-      (embroidery ? shoeAddonPrices.embroidery : 0)
+    ? 0
     : (longSleeves ? addonPrices.longSleeves : 0) +
       (patches ? addonPrices.patches : 0) +
       (personalization ? addonPrices.personalization : 0)
@@ -121,26 +118,9 @@ export function AddToCartForm({
     if (!selectedVariant) return
     const trimmedName = playerName.trim()
     const trimmedNumber = playerNumber.trim()
-    const trimmedInitials = embroideryInitials.trim().toUpperCase()
 
     let cartAddOns: CartItem["addOns"] | undefined
-    if (isShoe) {
-      const hasShoeAddOns = originalBox || extraStuds || embroidery
-      if (hasShoeAddOns) {
-        cartAddOns = {
-          // We tunnel shoe-specific add-ons through the same shape as
-          // jerseys: longSleeves=originalBox, patches=extraStuds,
-          // playerName=embroidery initials. Cart drawer + WhatsApp
-          // message are aware of the product context.
-          longSleeves: originalBox,
-          patches: extraStuds,
-          playerName:
-            embroidery && trimmedInitials ? trimmedInitials : undefined,
-          playerNumber: undefined,
-          total: addOnTotal,
-        }
-      }
-    } else {
+    if (!isShoe) {
       const hasAddOns = longSleeves || patches || personalization
       if (hasAddOns) {
         cartAddOns = {
@@ -251,177 +231,103 @@ export function AddToCartForm({
         </div>
       )}
 
-      {/* Add-ons — shoe context vs jersey context */}
-      <fieldset className="flex flex-col gap-2 rounded-xl border border-[rgba(1,27,83,0.12)] bg-white/60 p-4">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#011b53]/60">
-          Personaliza tu pedido
-        </legend>
+      {/* Add-ons — only for non-shoe products. Shoes ship without
+          add-ons because none of the jersey ones (mangas, parches,
+          estampado) make sense, and Ever doesn't want shoe-specific
+          extras yet. */}
+      {!isShoe && (
+        <fieldset className="flex flex-col gap-2 rounded-xl border border-[rgba(1,27,83,0.12)] bg-white/60 p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#011b53]/60">
+            Personaliza tu pedido
+          </legend>
 
-        {isShoe ? (
-          <>
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={originalBox}
-                  onChange={(e) => setOriginalBox(e.target.checked)}
-                  className="size-4 accent-[#011b53]"
-                />
-                <span className="text-sm text-[#011b53]">Caja original</span>
-              </span>
-              <span className="text-sm font-semibold tabular-nums text-[#980e21]">
-                +${shoeAddonPrices.originalBox.toFixed(0)}
-              </span>
-            </label>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
+            <span className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={longSleeves}
+                onChange={(e) => setLongSleeves(e.target.checked)}
+                className="size-4 accent-[#011b53]"
+              />
+              <span className="text-sm text-[#011b53]">Mangas largas</span>
+            </span>
+            <span className="text-sm font-semibold tabular-nums text-[#980e21]">
+              +${addonPrices.longSleeves.toFixed(0)}
+            </span>
+          </label>
 
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={extraStuds}
-                  onChange={(e) => setExtraStuds(e.target.checked)}
-                  className="size-4 accent-[#011b53]"
-                />
-                <span className="text-sm text-[#011b53]">
-                  Tacos extras{" "}
-                  <span className="text-[11px] text-[#011b53]/55">
-                    (SG/FG)
-                  </span>
-                </span>
-              </span>
-              <span className="text-sm font-semibold tabular-nums text-[#980e21]">
-                +${shoeAddonPrices.extraStuds.toFixed(0)}
-              </span>
-            </label>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
+            <span className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={patches}
+                onChange={(e) => setPatches(e.target.checked)}
+                className="size-4 accent-[#011b53]"
+              />
+              <span className="text-sm text-[#011b53]">Parches Champions/Liga</span>
+            </span>
+            <span className="text-sm font-semibold tabular-nums text-[#980e21]">
+              +${addonPrices.patches.toFixed(0)}
+            </span>
+          </label>
 
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={embroidery}
-                  onChange={(e) => setEmbroidery(e.target.checked)}
-                  className="size-4 accent-[#011b53]"
-                />
-                <span className="text-sm text-[#011b53]">
-                  Bordado con iniciales
-                </span>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
+            <span className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={personalization}
+                onChange={(e) => setPersonalization(e.target.checked)}
+                className="size-4 accent-[#011b53]"
+              />
+              <span className="text-sm text-[#011b53]">
+                Estampado nombre + dorsal
               </span>
-              <span className="text-sm font-semibold tabular-nums text-[#980e21]">
-                +${shoeAddonPrices.embroidery.toFixed(0)}
-              </span>
-            </label>
+            </span>
+            <span className="text-sm font-semibold tabular-nums text-[#980e21]">
+              +${addonPrices.personalization.toFixed(0)}
+            </span>
+          </label>
 
-            {embroidery && (
-              <div className="mt-2 flex flex-col gap-2 rounded-lg bg-[rgba(1,27,83,0.04)] p-3">
-                <p className="text-[11px] text-[#011b53]/65">
-                  Iniciales bordadas a un lado del talón. Hasta 4 caracteres.
-                </p>
+          {personalization && (
+            <div className="mt-2 flex flex-col gap-2 rounded-lg bg-[rgba(1,27,83,0.04)] p-3">
+              <p className="text-[11px] text-[#011b53]/65">
+                Anticipo del {addonPrices.personalizationDepositPct}% requerido ·
+                +24h al tiempo de entrega
+              </p>
+              <div className="flex gap-2">
                 <input
                   type="text"
-                  value={embroideryInitials}
-                  onChange={(e) =>
-                    setEmbroideryInitials(
-                      e.target.value.toUpperCase().slice(0, 4),
-                    )
-                  }
-                  placeholder="YR"
-                  maxLength={4}
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="MESSI"
+                  maxLength={16}
                   style={{ textTransform: "uppercase" }}
-                  className="h-9 w-32 rounded-md border border-[rgba(1,27,83,0.2)] bg-white px-2 text-center text-sm font-mono uppercase tracking-wider text-[#011b53] outline-none focus:border-[#011b53]"
+                  className="h-9 flex-1 rounded-md border border-[rgba(1,27,83,0.2)] bg-white px-2 text-sm font-mono uppercase tracking-wider text-[#011b53] outline-none focus:border-[#011b53]"
+                />
+                <input
+                  type="text"
+                  value={playerNumber}
+                  onChange={(e) =>
+                    setPlayerNumber(e.target.value.replace(/[^\d]/g, "").slice(0, 2))
+                  }
+                  placeholder="10"
+                  inputMode="numeric"
+                  className="h-9 w-16 rounded-md border border-[rgba(1,27,83,0.2)] bg-white px-2 text-center text-sm font-mono tabular-nums text-[#011b53] outline-none focus:border-[#011b53]"
                 />
               </div>
-            )}
-          </>
-        ) : (
-          <>
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={longSleeves}
-                  onChange={(e) => setLongSleeves(e.target.checked)}
-                  className="size-4 accent-[#011b53]"
-                />
-                <span className="text-sm text-[#011b53]">Mangas largas</span>
-              </span>
-              <span className="text-sm font-semibold tabular-nums text-[#980e21]">
-                +${addonPrices.longSleeves.toFixed(0)}
-              </span>
-            </label>
+            </div>
+          )}
 
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={patches}
-                  onChange={(e) => setPatches(e.target.checked)}
-                  className="size-4 accent-[#011b53]"
-                />
-                <span className="text-sm text-[#011b53]">Parches Champions/Liga</span>
+          {addOnTotal > 0 && (
+            <div className="mt-1 flex items-center justify-between border-t border-[rgba(1,27,83,0.08)] pt-2 text-xs font-semibold text-[#011b53]">
+              <span>Total con extras</span>
+              <span className="tabular-nums">
+                ${lineUnit.toFixed(2)} × {quantity} = ${(lineUnit * quantity).toFixed(2)}
               </span>
-              <span className="text-sm font-semibold tabular-nums text-[#980e21]">
-                +${addonPrices.patches.toFixed(0)}
-              </span>
-            </label>
-
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[rgba(1,27,83,0.04)]">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={personalization}
-                  onChange={(e) => setPersonalization(e.target.checked)}
-                  className="size-4 accent-[#011b53]"
-                />
-                <span className="text-sm text-[#011b53]">
-                  Estampado nombre + dorsal
-                </span>
-              </span>
-              <span className="text-sm font-semibold tabular-nums text-[#980e21]">
-                +${addonPrices.personalization.toFixed(0)}
-              </span>
-            </label>
-
-            {personalization && (
-              <div className="mt-2 flex flex-col gap-2 rounded-lg bg-[rgba(1,27,83,0.04)] p-3">
-                <p className="text-[11px] text-[#011b53]/65">
-                  Anticipo del {addonPrices.personalizationDepositPct}% requerido ·
-                  +24h al tiempo de entrega
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="MESSI"
-                    maxLength={16}
-                    style={{ textTransform: "uppercase" }}
-                    className="h-9 flex-1 rounded-md border border-[rgba(1,27,83,0.2)] bg-white px-2 text-sm font-mono uppercase tracking-wider text-[#011b53] outline-none focus:border-[#011b53]"
-                  />
-                  <input
-                    type="text"
-                    value={playerNumber}
-                    onChange={(e) =>
-                      setPlayerNumber(e.target.value.replace(/[^\d]/g, "").slice(0, 2))
-                    }
-                    placeholder="10"
-                    inputMode="numeric"
-                    className="h-9 w-16 rounded-md border border-[rgba(1,27,83,0.2)] bg-white px-2 text-center text-sm font-mono tabular-nums text-[#011b53] outline-none focus:border-[#011b53]"
-                  />
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {addOnTotal > 0 && (
-          <div className="mt-1 flex items-center justify-between border-t border-[rgba(1,27,83,0.08)] pt-2 text-xs font-semibold text-[#011b53]">
-            <span>Total con extras</span>
-            <span className="tabular-nums">
-              ${lineUnit.toFixed(2)} × {quantity} = ${(lineUnit * quantity).toFixed(2)}
-            </span>
-          </div>
-        )}
-      </fieldset>
+            </div>
+          )}
+        </fieldset>
+      )}
 
       {/* Add to cart CTA */}
       <button
