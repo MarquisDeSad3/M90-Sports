@@ -70,6 +70,14 @@ const nextConfig: NextConfig = {
       { source: "/api/:path*", headers: apiCorsHeaders },
     ]
   },
+  async redirects() {
+    return [
+      // /tienda used to be a separate listing page — we collapsed it
+      // into the home's StoreSection (anchor #tienda) so the catalog
+      // lives in one place. Product detail pages /tienda/[slug] stay.
+      { source: "/tienda", destination: "/#tienda", permanent: true },
+    ]
+  },
 }
 
 export default nextConfig

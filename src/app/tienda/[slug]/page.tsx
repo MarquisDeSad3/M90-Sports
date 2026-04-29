@@ -163,11 +163,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
       <div className="mx-auto max-w-6xl px-5 pt-28 pb-2 md:px-8 md:pt-32">
         <Link
-          href="/tienda"
+          href="/#tienda"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#011b53]/75 transition-colors hover:text-[#011b53]"
         >
           <ArrowLeft className="size-4" />
-          Volver a la tienda
+          Volver al catálogo
         </Link>
       </div>
 
