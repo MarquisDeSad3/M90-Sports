@@ -1,4 +1,7 @@
+import Link from "next/link"
 import { redirect } from "next/navigation"
+import { Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { requireAdmin } from "@/lib/auth"
 import { isAtLeastStaff } from "@/lib/auth/roles"
 import {
@@ -38,13 +41,21 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col gap-5 p-4 md:gap-6 md:p-6">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
-          Clientes
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Quién compra, qué compra y dónde lo recibe.
-        </p>
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
+            Clientes
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Quién compra, qué compra y dónde lo recibe.
+          </p>
+        </div>
+        <Button asChild size="sm" className="gap-2">
+          <Link href="/admin/customers/new">
+            <Plus className="size-4" />
+            <span>Nuevo cliente</span>
+          </Link>
+        </Button>
       </div>
 
       <CustomersClient items={items} counts={counts} segment={segment} />
