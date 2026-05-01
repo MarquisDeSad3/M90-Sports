@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select"
 import { ProductImage } from "@/components/admin/product-image"
 import { ProductStatusBadge } from "@/components/admin/product-status-badge"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import type { AdminPreorderRow } from "@/lib/queries/admin-preorders"
 import { bulkAssignCategoryAction } from "./actions"
@@ -74,6 +75,7 @@ export function PreordersView({
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
   const [targetCategoryId, setTargetCategoryId] = React.useState<string>("")
   const [mode, setMode] = React.useState<"add" | "move">("add")
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{
     kind: "ok" | "err"
     text: string
@@ -168,18 +170,15 @@ export function PreordersView({
   // Soft-delete the current selection. Same action that /admin/products
   // uses, so the products stay recoverable via the DB but disappear from
   // every public surface (catalog, sitemap, search) immediately after the
-  // page refresh.
+  // page refresh. The actual DB call lives in confirmBulkDelete; this
+  // entry point just opens the styled dialog (no more native confirm).
   function handleBulkDelete() {
     if (selected.size === 0) return
-    const n = selected.size
-    if (
-      !window.confirm(
-        `¿Eliminar ${n} producto${n === 1 ? "" : "s"}? Dejarán de verse en la tienda. La acción es reversible desde la base de datos.`,
-      )
-    ) {
-      return
-    }
     setFeedback(null)
+    setDeleteDialogOpen(true)
+  }
+
+  function confirmBulkDelete() {
     const ids = Array.from(selected)
     startBulk(async () => {
       const res = await bulkDeleteProductsAction(ids)
@@ -189,9 +188,11 @@ export function PreordersView({
           text: `${res.affected} producto${res.affected === 1 ? "" : "s"} eliminado${res.affected === 1 ? "" : "s"}.`,
         })
         clearSelection()
+        setDeleteDialogOpen(false)
         router.refresh()
       } else {
         setFeedback({ kind: "err", text: res.error })
+        setDeleteDialogOpen(false)
       }
     })
   }
@@ -423,6 +424,30 @@ export function PreordersView({
           pending={pending}
         />
       )}
+
+      {/* Confirm dialog for bulk soft-delete. Mounted here so it lives
+          outside the bulk-actions strip and survives the strip
+          unmounting when selection clears mid-action. */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        variant="destructive"
+        title={`¿Eliminar ${selected.size} producto${selected.size === 1 ? "" : "s"}?`}
+        description={
+          <>
+            Dejarán de verse en la tienda y en el sitemap inmediatamente.
+            La acción es <span className="font-semibold">reversible</span>{" "}
+            desde la base de datos (soft-delete via{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+              deleted_at
+            </code>
+            ).
+          </>
+        }
+        confirmLabel="Sí, eliminar"
+        pending={bulkPending}
+        onConfirm={confirmBulkDelete}
+      />
     </div>
   )
 }

@@ -36,6 +36,7 @@ import { ProductImage } from "@/components/admin/product-image"
 import { ProductStatusBadge } from "@/components/admin/product-status-badge"
 import { StockPill } from "@/components/admin/stock-pill"
 import { PreorderPickerDialog } from "@/components/admin/preorder-picker-dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
   getProductTotalStock,
   LEAGUE_LABEL,
@@ -84,6 +85,7 @@ export function ProductsListClient({
   const [bulkError, setBulkError] = React.useState<string | null>(null)
   const [page, setPage] = React.useState(1)
   const [pickerOpen, setPickerOpen] = React.useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const PAGE_SIZE = 50
   const searchRef = React.useRef<HTMLInputElement>(null)
 
@@ -508,15 +510,7 @@ export function ProductsListClient({
               size="sm"
               disabled={bulkPending}
               className="gap-1.5 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `¿Eliminar ${selected.size} producto${selected.size === 1 ? "" : "s"}? Esta acción los marca como borrados pero se pueden restaurar manualmente.`,
-                  )
-                ) {
-                  runBulk(() => bulkDeleteProductsAction(selectedIds))
-                }
-              }}
+              onClick={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className="size-3.5" /> Eliminar
             </Button>
@@ -840,6 +834,33 @@ export function ProductsListClient({
           targetCategoryName={activeCategory.name}
         />
       )}
+
+      {/* Confirm dialog for bulk soft-delete. Replaces the browser-native
+          confirm() prompt — the chrome of that thing leaks the domain
+          ("m90-sports.com says…") which looks awful in a polished admin. */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        variant="destructive"
+        title={`¿Eliminar ${selected.size} producto${selected.size === 1 ? "" : "s"}?`}
+        description={
+          <>
+            Dejarán de verse en la tienda y en el sitemap inmediatamente.
+            La acción es <span className="font-semibold">reversible</span>{" "}
+            desde la base de datos (soft-delete via{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+              deleted_at
+            </code>
+            ).
+          </>
+        }
+        confirmLabel="Sí, eliminar"
+        pending={bulkPending}
+        onConfirm={async () => {
+          await runBulk(() => bulkDeleteProductsAction(selectedIds))
+          setDeleteDialogOpen(false)
+        }}
+      />
     </div>
   )
 }
