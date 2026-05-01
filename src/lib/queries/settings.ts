@@ -17,8 +17,6 @@ export interface SiteSettings {
     whatsappDefaultMessage: string
   }
   payments: {
-    transfermovilEnabled: boolean
-    transfermovilAccount: string
     cashOnDeliveryEnabled: boolean
     zelleEnabled: boolean
     zelleEmail: string
@@ -53,8 +51,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     whatsappDefaultMessage: "Hola M90, me interesa una camiseta.",
   },
   payments: {
-    transfermovilEnabled: true,
-    transfermovilAccount: "",
     cashOnDeliveryEnabled: true,
     zelleEnabled: true,
     zelleEmail: "",

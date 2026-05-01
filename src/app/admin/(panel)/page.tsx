@@ -31,7 +31,6 @@ const PAYMENT_STATUS_LABEL: Record<
 }
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  transfermovil: "Transfermóvil",
   cash_on_delivery: "Efectivo a la entrega",
   zelle: "Zelle",
   paypal: "PayPal",
@@ -130,7 +129,7 @@ export default async function AdminDashboardPage() {
           delta={{
             value: data.paymentsToVerify > 0 ? "Acción" : "OK",
             direction: data.paymentsToVerify > 0 ? "flat" : "up",
-            label: "Transfermóvil/Zelle",
+            label: "Zelle/PayPal",
           }}
           icon={Package2}
           accent="warning"

@@ -462,12 +462,11 @@ const manualOrderSchema = z
       })
       .strict(),
     items: z.array(manualItemSchema).min(1).max(20),
-    paymentMethod: z.enum([
-      "transfermovil",
-      "cash_on_delivery",
-      "zelle",
-      "paypal",
-    ]),
+    // Métodos de pago vivos. "transfermovil" queda fuera del enum
+     // de validación nuevo; los pedidos legacy con TM en BD ya no
+     // se pueden editar a través de este endpoint, pero se siguen
+     // mostrando en lectura.
+    paymentMethod: z.enum(["cash_on_delivery", "zelle", "paypal"]),
     markAsPaid: z.boolean().default(false),
     notesCustomer: z.string().trim().max(500).optional().or(z.literal("")),
     notesInternal: z.string().trim().max(500).optional().or(z.literal("")),

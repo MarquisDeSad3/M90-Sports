@@ -23,17 +23,20 @@ const PROVINCES = [
   { value: "PINAR_DEL_RIO", label: "Pinar del Río" },
 ] as const
 
+// Métodos de pago visibles en el checkout. Transfermóvil quedó
+// fuera por decisión de Ever — la base de pagos del cliente son
+// Zelle/PayPal (familia en el exterior pagando) y efectivo a la
+// entrega para los que reciben en La Habana directamente.
+//
+// Nota técnica: el backend (schema, validation, mock-orders) sigue
+// aceptando "transfermovil" como método legacy para órdenes
+// históricas. Solo lo escondemos del formulario público.
 const PAYMENT_METHODS: {
-  value: "transfermovil" | "cash_on_delivery" | "zelle" | "paypal"
+  value: "cash_on_delivery" | "zelle" | "paypal"
   label: string
   desc: string
   diasporaOnly?: boolean
 }[] = [
-  {
-    value: "transfermovil",
-    label: "Transfermóvil",
-    desc: "Pago desde la app del banco cubano",
-  },
   {
     value: "cash_on_delivery",
     label: "Efectivo a la entrega",
@@ -75,7 +78,7 @@ export default function CheckoutPage() {
   const [municipality, setMunicipality] = React.useState("")
   const [province, setProvince] = React.useState<typeof PROVINCES[number]["value"]>("LA_HABANA")
   const [reference, setReference] = React.useState("")
-  const [paymentMethod, setPaymentMethod] = React.useState<typeof PAYMENT_METHODS[number]["value"]>("transfermovil")
+  const [paymentMethod, setPaymentMethod] = React.useState<typeof PAYMENT_METHODS[number]["value"]>("cash_on_delivery")
   const [notes, setNotes] = React.useState("")
   const [couponCode, setCouponCode] = React.useState("")
 
@@ -96,12 +99,14 @@ export default function CheckoutPage() {
   )
 
   React.useEffect(() => {
-    // Reset payment method if it becomes invalid for the current mode
+    // Reset payment method if it becomes invalid for the current mode.
+    // Sin Transfermóvil, el fallback natural para clientes en Cuba es
+    // efectivo a la entrega.
     if (
       !isDiaspora &&
       (paymentMethod === "zelle" || paymentMethod === "paypal")
     ) {
-      setPaymentMethod("transfermovil")
+      setPaymentMethod("cash_on_delivery")
     }
   }, [isDiaspora, paymentMethod])
 

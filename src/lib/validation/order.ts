@@ -99,8 +99,9 @@ export const shippingAddressSchema = z
   })
   .strict()
 
+// Métodos vivos. Pedidos legacy con paymentMethod="transfermovil"
+// existen en BD pero ya no son aceptables como input nuevo.
 export const paymentMethodSchema = z.enum([
-  "transfermovil",
   "cash_on_delivery",
   "zelle",
   "paypal",

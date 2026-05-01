@@ -80,17 +80,6 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <PaymentRow
-            name="transfermovil"
-            label="Transfermóvil"
-            defaultEnabled={initial.payments.transfermovilEnabled}
-            accountField={{
-              name: "payments.transfermovilAccount",
-              defaultValue: initial.payments.transfermovilAccount,
-              placeholder: "Tu tarjeta o cuenta",
-            }}
-          />
-          <Separator />
-          <PaymentRow
             name="cashOnDelivery"
             label="Efectivo a la entrega"
             defaultEnabled={initial.payments.cashOnDeliveryEnabled}

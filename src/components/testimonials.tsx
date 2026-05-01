@@ -75,7 +75,7 @@ const REVIEWS: Review[] = [
     initials: "RD",
     city: "Holguín",
     rating: 5,
-    text: "Compré la Lakers de Kobe. Tela pesada como debe ser, sin hilos sueltos. Pagué por Transfermóvil y en 4 días la tenía. M90 es serio, esa es la verdad.",
+    text: "Compré la Lakers de Kobe. Tela pesada como debe ser, sin hilos sueltos. Pagué por Zelle y en 4 días la tenía. M90 es serio, esa es la verdad.",
     product: "Lakers Kobe #24",
   },
 ];

@@ -234,7 +234,10 @@ export async function getOrders(filters: OrderFilters = {}): Promise<MockOrder[]
       currency: r.currency,
       shippingAddress,
       shippingMethod: r.shippingMethod ?? "Mensajería propia",
-      paymentMethod: (r.paymentMethod ?? "transfermovil") as PaymentMethodType,
+      // Fallback "cash_on_delivery" para órdenes nuevas sin método
+      // explícito. Las legacy con paymentMethod="transfermovil" en
+      // la columna se siguen leyendo tal cual.
+      paymentMethod: (r.paymentMethod ?? "cash_on_delivery") as PaymentMethodType,
       paymentVerified,
       paymentTransactionRef: transactionRef ?? undefined,
       proofUploaded,

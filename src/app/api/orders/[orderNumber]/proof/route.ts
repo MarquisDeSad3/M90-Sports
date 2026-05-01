@@ -17,7 +17,7 @@ const MAX_BYTES = 5 * 1024 * 1024
 const MAX_DIMENSION = 1600
 const WEBP_QUALITY = 82
 
-const ALLOWED_METHODS = ["transfermovil", "zelle", "paypal"] as const
+const ALLOWED_METHODS = ["zelle", "paypal"] as const
 type AllowedMethod = (typeof ALLOWED_METHODS)[number]
 
 interface MagicByteCheck {

@@ -77,7 +77,7 @@ export const adminNav: NavGroup[] = [
         href: "/admin/payments",
         icon: Wallet,
         badge: 2,
-        description: "Verificar Transfermóvil / Zelle",
+        description: "Verificar Zelle / PayPal",
       },
       {
         title: "Pedidos a medida",

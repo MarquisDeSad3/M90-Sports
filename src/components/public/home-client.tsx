@@ -83,7 +83,7 @@ export function HomeClient({ products }: { products: PublicProduct[] }) {
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-[#011b53]/75 md:text-base">
             Pídelos por WhatsApp y los enviamos a toda Cuba — La Habana, Matanzas,
-            Pinar del Río, Mayabeque y Artemisa. Pago Transfermóvil, Zelle, PayPal
+            Pinar del Río, Mayabeque y Artemisa. Pago por Zelle, PayPal
             o efectivo a la entrega.
           </p>
         </div>

@@ -215,11 +215,11 @@ export const mockOrders: MockOrder[] = [
       province: "La Habana",
     },
     shippingMethod: "Mensajería propia",
-    paymentMethod: "transfermovil",
+    paymentMethod: "zelle",
     paymentVerified: false,
     proofUploaded: false,
     whatsappPreview:
-      "Buenas, soy Roberto. Quiero el Bellingham 24 talla M. Pago Transfermóvil.",
+      "Buenas, soy Roberto. Quiero el Bellingham 24 talla M. Pago por Zelle.",
     createdAt: now(34),
   },
   {
@@ -366,9 +366,9 @@ export const mockOrders: MockOrder[] = [
       province: "La Habana",
     },
     shippingMethod: "Mensajería propia",
-    paymentMethod: "transfermovil",
+    paymentMethod: "zelle",
     paymentVerified: false,
-    paymentTransactionRef: "TM-20260425-7891",
+    paymentTransactionRef: "ZL-20260425-7891",
     proofUploaded: true,
     createdAt: now(280),
     confirmedAt: now(260),
@@ -423,9 +423,9 @@ export const mockOrders: MockOrder[] = [
       province: "La Habana",
     },
     shippingMethod: "Mensajería propia",
-    paymentMethod: "transfermovil",
+    paymentMethod: "zelle",
     paymentVerified: true,
-    paymentTransactionRef: "TM-20260424-1234",
+    paymentTransactionRef: "ZL-20260424-1234",
     proofUploaded: true,
     createdAt: now(720),
     confirmedAt: now(700),
@@ -471,9 +471,9 @@ export const mockOrders: MockOrder[] = [
       province: "La Habana",
     },
     shippingMethod: "Mensajería propia",
-    paymentMethod: "transfermovil",
+    paymentMethod: "zelle",
     paymentVerified: true,
-    paymentTransactionRef: "TM-20260424-9988",
+    paymentTransactionRef: "ZL-20260424-9988",
     proofUploaded: true,
     notesInternal: "Empacar para entrega de mañana",
     createdAt: now(1440),
@@ -643,8 +643,10 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   preparing: "Preparando",
 }
 
-export const PAYMENT_METHOD_LABEL: Record<PaymentMethodType, string> = {
-  transfermovil: "Transfermóvil",
+// Partial — los pedidos legacy con paymentMethod="transfermovil" caen
+// al fallback (raw value). Por diseño: ya no le damos branding al
+// método retirado.
+export const PAYMENT_METHOD_LABEL: Partial<Record<PaymentMethodType, string>> = {
   cash_on_delivery: "Efectivo a la entrega",
   zelle: "Zelle",
   paypal: "PayPal",

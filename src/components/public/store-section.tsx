@@ -90,7 +90,7 @@ export function StoreSection({
           </h2>
           <p className="max-w-xl text-sm leading-relaxed text-[#011b53]/75 md:text-base">
             Cada pedido te llega a las 16 provincias de Cuba con seguimiento.
-            Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.
+            Pago por Zelle, PayPal o efectivo a la entrega.
           </p>
         </div>
 

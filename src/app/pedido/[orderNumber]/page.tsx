@@ -46,8 +46,9 @@ export async function generateMetadata({
   }
 }
 
-const PAYMENT_METHOD_LABEL: Record<PublicPaymentMethod, string> = {
-  transfermovil: "Transfermóvil",
+// Partial — pedidos legacy con paymentMethod="transfermovil" caen al
+// fallback (string cruda) cuando se renderizan en el tracking público.
+const PAYMENT_METHOD_LABEL: Partial<Record<PublicPaymentMethod, string>> = {
   cash_on_delivery: "Efectivo a la entrega",
   zelle: "Zelle",
   paypal: "PayPal",
@@ -276,7 +277,7 @@ export default async function PublicOrderPage({ params }: PageProps) {
             <div className="mt-2 flex items-center gap-2 text-sm">
               <Wallet className="size-4 text-[#011b53]/55" />
               <span className="font-semibold">
-                {PAYMENT_METHOD_LABEL[order.paymentMethod]}
+                {PAYMENT_METHOD_LABEL[order.paymentMethod] ?? order.paymentMethod}
               </span>
               <PaymentBadge status={order.paymentStatus} />
             </div>

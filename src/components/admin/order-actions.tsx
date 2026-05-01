@@ -327,13 +327,11 @@ export function OrderActions({ order }: OrderActionsProps) {
                   tone="info"
                   title="Esperando comprobante"
                   body={`El cliente debe pagar por ${
-                    order.paymentMethod === "transfermovil"
-                      ? "Transfermóvil"
-                      : order.paymentMethod === "zelle"
-                        ? "Zelle"
-                        : order.paymentMethod === "paypal"
-                          ? "PayPal"
-                          : order.paymentMethod
+                    order.paymentMethod === "zelle"
+                      ? "Zelle"
+                      : order.paymentMethod === "paypal"
+                        ? "PayPal"
+                        : order.paymentMethod
                   } y enviarte el comprobante.`}
                 />
                 <WhatsappNotify order={order} template="awaiting_proof" />

@@ -117,7 +117,7 @@ export const mockReviews: MockReview[] = [
     customerCountry: "CU",
     rating: 5,
     body:
-      "Con la City Edition arrasé en el barrio. El detalle del puente Golden Gate en la espalda es para enmarcar. Pago Transfermóvil aprobado en 5 minutos.",
+      "Con la City Edition arrasé en el barrio. El detalle del puente Golden Gate en la espalda es para enmarcar. Pagué por Zelle, todo limpio en 5 minutos.",
     hasPhoto: true,
     status: "approved",
     featured: true,
@@ -222,7 +222,7 @@ export const mockReviews: MockReview[] = [
     customerCountry: "CU",
     rating: 5,
     body:
-      "Jokic MVP y este jersey lo mereces. Llegó en perfecto estado, pago Transfermóvil sin dramas.",
+      "Jokic MVP y este jersey lo mereces. Llegó en perfecto estado, pago por Zelle sin dramas.",
     hasPhoto: true,
     status: "approved",
     featured: false,

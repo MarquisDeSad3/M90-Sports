@@ -25,8 +25,6 @@ const settingsSchema = z.object({
     .strict(),
   payments: z
     .object({
-      transfermovilEnabled: z.boolean(),
-      transfermovilAccount: z.string().trim().max(80),
       cashOnDeliveryEnabled: z.boolean(),
       zelleEnabled: z.boolean(),
       zelleEmail: z.string().trim().max(120),
@@ -95,11 +93,6 @@ export async function saveSettingsAction(
       ),
     },
     payments: {
-      transfermovilEnabled:
-        formData.get("payments.transfermovilEnabled") === "on",
-      transfermovilAccount: String(
-        formData.get("payments.transfermovilAccount") ?? "",
-      ),
       cashOnDeliveryEnabled:
         formData.get("payments.cashOnDeliveryEnabled") === "on",
       zelleEnabled: formData.get("payments.zelleEnabled") === "on",

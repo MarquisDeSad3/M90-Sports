@@ -51,8 +51,8 @@ const CONVERSATIONS: Conversation[] = [
   {
     time: "Hoy 18:02",
     bubbles: [
-      { from: "client", text: "¿Puedo pagar por Transfermóvil?" },
-      { from: "m90", text: "Claro, o MLC si prefieres." },
+      { from: "client", text: "¿Puedo pagar por Zelle?" },
+      { from: "m90", text: "Claro, o PayPal si prefieres." },
       { from: "client", text: "Transferencia enviada" },
       {
         from: "m90",

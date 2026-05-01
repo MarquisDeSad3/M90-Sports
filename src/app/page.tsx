@@ -21,7 +21,7 @@ export const revalidate = 0
 export const metadata: Metadata = {
   title: "M90 Sports — Jerseys de fútbol y NBA en Cuba",
   description:
-    "Camisetas oficiales, retro y selecciones. Envíos a toda Cuba. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.",
+    "Camisetas oficiales, retro y selecciones. Envíos a toda Cuba. Pago por Zelle, PayPal o efectivo a la entrega.",
 }
 
 const SITE_URL =
@@ -42,7 +42,7 @@ const orgLd = {
     addressRegion: "La Habana",
   },
   areaServed: { "@type": "Country", name: "Cuba" },
-  paymentAccepted: ["Transfermóvil", "Zelle", "PayPal", "Cash"],
+  paymentAccepted: ["Zelle", "PayPal", "Cash"],
   potentialAction: {
     "@type": "SearchAction",
     target: `${SITE_URL}/tienda?q={search_term_string}`,

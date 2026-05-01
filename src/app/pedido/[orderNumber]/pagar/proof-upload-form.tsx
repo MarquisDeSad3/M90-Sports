@@ -11,15 +11,9 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Method = "transfermovil" | "zelle" | "paypal"
+type Method = "zelle" | "paypal"
 
 const METHODS: { id: Method; label: string; instructions: string }[] = [
-  {
-    id: "transfermovil",
-    label: "Transfermóvil",
-    instructions:
-      "Tarjeta MLC: 9210 5995 0123 4567 · Concepto: tu número de pedido",
-  },
   {
     id: "zelle",
     label: "Zelle",
@@ -47,7 +41,7 @@ export function ProofUploadForm({
   const [method, setMethod] = React.useState<Method>(
     defaultMethod === "zelle" || defaultMethod === "paypal"
       ? defaultMethod
-      : "transfermovil",
+      : "zelle",
   )
   const [file, setFile] = React.useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
@@ -253,7 +247,7 @@ export function ProofUploadForm({
             className="rounded-lg border border-[rgba(1,27,83,0.18)] bg-white px-3 py-2.5 text-sm font-mono tabular-nums text-[#011b53] placeholder:font-sans placeholder:text-[#011b53]/40 focus:border-[#011b53] focus:outline-none focus:ring-2 focus:ring-[#011b53]/15"
           />
           <span className="text-[11px] text-[#011b53]/55">
-            Si Transfermóvil te dio un número de operación, ponlo acá.
+            Si tu banco o Zelle te dio un número de operación, ponlo acá.
             Acelera la verificación.
           </span>
         </label>

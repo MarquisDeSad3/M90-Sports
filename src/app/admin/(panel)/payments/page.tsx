@@ -40,8 +40,8 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
           Pagos
         </h2>
         <p className="text-sm text-muted-foreground">
-          Verifica comprobantes de Transfermóvil, Zelle y PayPal antes de
-          procesar pedidos.
+          Verifica comprobantes de Zelle y PayPal antes de procesar
+          pedidos.
         </p>
       </div>
 

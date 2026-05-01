@@ -33,19 +33,22 @@ import {
   verifyPaymentAction,
 } from "./actions"
 
-const METHOD_LABEL: Record<PaymentMethod, string> = {
-  transfermovil: "Transfermóvil",
+// Partial — pedidos legacy con paymentMethod="transfermovil" se renderizan
+// con un fallback (la string cruda) en vez de una etiqueta linda. Es
+// intencional: ya no usamos Transfermóvil y no le damos ese branding.
+const METHOD_LABEL: Partial<Record<PaymentMethod, string>> = {
   zelle: "Zelle",
   paypal: "PayPal",
   cash_on_delivery: "Efectivo (entrega)",
 }
 
-const METHOD_TONE: Record<PaymentMethod, string> = {
-  transfermovil: "bg-blue-50 text-blue-900 ring-blue-200",
+const METHOD_TONE: Partial<Record<PaymentMethod, string>> = {
   zelle: "bg-purple-50 text-purple-900 ring-purple-200",
   paypal: "bg-sky-50 text-sky-900 ring-sky-200",
   cash_on_delivery: "bg-amber-50 text-amber-900 ring-amber-200",
 }
+
+const TONE_FALLBACK = "bg-muted text-muted-foreground ring-border"
 
 interface Props {
   items: PaymentRecord[]
@@ -252,10 +255,10 @@ function PaymentRow({ payment }: { payment: PaymentRecord }) {
                 variant="outline"
                 className={cn(
                   "text-[10px] uppercase tracking-wider ring-1",
-                  METHOD_TONE[payment.method],
+                  METHOD_TONE[payment.method] ?? TONE_FALLBACK,
                 )}
               >
-                {METHOD_LABEL[payment.method]}
+                {METHOD_LABEL[payment.method] ?? payment.method}
               </Badge>
               <PaymentStatusPill status={payment.status} />
             </div>

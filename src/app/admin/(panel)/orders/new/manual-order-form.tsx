@@ -247,9 +247,12 @@ export function ManualOrderForm({
   const [reference, setReference] = React.useState("")
 
   // ─── Payment + notes ──────────────────────────────────────────────
+  // Solo métodos vivos — la creación nueva de pedidos no acepta
+  // "transfermovil". Los pedidos legacy con TM se siguen mostrando
+  // en lectura desde el detalle/admin/payments.
   const [paymentMethod, setPaymentMethod] = React.useState<
-    "transfermovil" | "cash_on_delivery" | "zelle" | "paypal"
-  >("transfermovil")
+    "cash_on_delivery" | "zelle" | "paypal"
+  >("cash_on_delivery")
   const [markAsPaid, setMarkAsPaid] = React.useState(false)
   const [notesCustomer, setNotesCustomer] = React.useState("")
   const [notesInternal, setNotesInternal] = React.useState("")
@@ -712,7 +715,6 @@ export function ManualOrderForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="transfermovil">Transfermóvil</SelectItem>
                 <SelectItem value="zelle">Zelle</SelectItem>
                 <SelectItem value="paypal">PayPal</SelectItem>
                 <SelectItem value="cash_on_delivery">Efectivo a la entrega</SelectItem>

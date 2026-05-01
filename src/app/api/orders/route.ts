@@ -115,7 +115,6 @@ function buildWhatsAppMessage(opts: {
     })
     .join("\n")
   const paymentLabel: Record<string, string> = {
-    transfermovil: "Transfermóvil",
     cash_on_delivery: "Efectivo a la entrega",
     zelle: "Zelle",
     paypal: "PayPal",
