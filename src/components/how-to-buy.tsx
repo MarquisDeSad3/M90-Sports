@@ -33,13 +33,16 @@ const STEPS = [
   {
     icon: <Wallet size={20} />,
     title: "Paga como prefieras",
-    desc: "Transfermóvil, MLC, o CUP/USD en efectivo. El que te venga mejor.",
+    desc: "Zelle, PayPal o efectivo a la entrega. El canal que mejor te venga.",
     kicker: "Paso 03",
   },
   {
     icon: <Truck size={20} />,
     title: "Recibe en tu puerta",
-    desc: "Envío en 24–48h en La Habana. Resto de provincias 3–5 días por mensajería.",
+    // Diferenciado entre stock y encargo porque son ciclos
+    // distintos. Sin diferenciar, el comprador piensa que todo es
+    // 1-2 semanas y se sorprende cuando le dicen 25-30 días.
+    desc: "En stock: 1–2 semanas a tu provincia. Por encargo: 25–30 días a Cuba + envío.",
     kicker: "Paso 04",
   },
 ];

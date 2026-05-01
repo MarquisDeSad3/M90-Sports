@@ -37,7 +37,7 @@ export async function generateMetadata({
   // not a marketing slogan. Strip user-entered HTML defensively.
   const desc = product.description
     ? product.description.replace(/<[^>]*>/g, "").slice(0, 160)
-    : `Camiseta ${product.name}. Envíos a las 16 provincias de Cuba con seguimiento. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.`
+    : `Camiseta ${product.name}. Envíos a las 16 provincias de Cuba con seguimiento. Pago por Zelle, PayPal o efectivo a la entrega.`
 
   const url = `${SITE_URL}/tienda/${product.slug}`
   const image = product.primaryImageUrl
@@ -220,7 +220,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Price + rating */}
+          {/* Price + rating + delivery chip. The chip lives here (not
+              buried in Trust signals lower down) so the buyer sees the
+              ETA at the same time as the price — that's the moment of
+              "puedo permitirme esperar / no puedo" decision. */}
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline gap-3">
               <span
@@ -235,7 +238,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 </span>
               )}
             </div>
-            <RatingPill summary={ratingSummary} size="sm" />
+            <div className="flex flex-wrap items-center gap-2">
+              <RatingPill summary={ratingSummary} size="sm" />
+              {product.isPreorder ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-sky-600/10 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-600/20">
+                  <Truck className="size-3" />
+                  Por encargo · 25–30 días
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
+                  <Truck className="size-3" />
+                  En stock · 1–2 semanas
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Description */}
@@ -280,13 +296,34 @@ export default async function ProductDetailPage({ params }: PageProps) {
             <div className="flex items-start gap-2.5">
               <Truck className="mt-0.5 size-4 shrink-0 text-[#011b53]/70" />
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-semibold">
-                  Envíos a las 16 provincias de Cuba
-                </span>
-                <span className="text-xs text-[#011b53]/65">
-                  Mensajería con seguimiento. Tarifa y tiempo se confirman por
-                  WhatsApp antes del pago.
-                </span>
+                {/* Tiempo de entrega real, no copy genérico. Lo
+                    cambiamos según stock/encargo porque el ciclo
+                    es totalmente distinto y el cliente lo necesita
+                    saber ANTES de tocar "Cotizar" o "Añadir al
+                    carrito". */}
+                {product.isPreorder ? (
+                  <>
+                    <span className="text-sm font-semibold">
+                      Por encargo · 25–30 días a Cuba
+                    </span>
+                    <span className="text-xs text-[#011b53]/65">
+                      Después de cerrar la ronda de pedidos. Suma 1–2
+                      semanas más para entrega en tu provincia. Tarifa
+                      de envío se confirma por WhatsApp antes del pago.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm font-semibold">
+                      En stock · 1–2 semanas a tu provincia
+                    </span>
+                    <span className="text-xs text-[#011b53]/65">
+                      Mensajería con seguimiento a las 16 provincias.
+                      Tarifa se confirma por WhatsApp antes del pago.
+                      Más rápido en La Habana y centro del país.
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-start gap-2.5">

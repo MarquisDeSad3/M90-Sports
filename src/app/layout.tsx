@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s · M90 Sports",
   },
   description:
-    "Camisetas oficiales, retro y selecciones. Envíos a las 16 provincias de Cuba con seguimiento. Pago Transfermóvil, Zelle, PayPal o efectivo a la entrega.",
+    "Camisetas oficiales, retro y selecciones. Envíos a las 16 provincias de Cuba con seguimiento. Pago por Zelle, PayPal o efectivo a la entrega.",
   applicationName: "M90 Sports",
   keywords: [
     "jerseys Cuba",
@@ -31,7 +31,8 @@ export const metadata: Metadata = {
     "tienda deportiva La Habana",
     "NBA Cuba",
     "retro fútbol",
-    "Transfermóvil",
+    "Zelle Cuba",
+    "PayPal Cuba",
   ],
   icons: {
     icon: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/brand/m90-red.png`,
