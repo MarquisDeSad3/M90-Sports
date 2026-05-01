@@ -12,6 +12,7 @@ import {
   Loader2,
   Search,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,9 @@ import { ProductStatusBadge } from "@/components/admin/product-status-badge"
 import { cn } from "@/lib/utils"
 import type { AdminPreorderRow } from "@/lib/queries/admin-preorders"
 import { bulkAssignCategoryAction } from "./actions"
+// Soft-delete bulk action lives with the product mutations — re-using it
+// here so the preorder grid has the same behavior as /admin/products.
+import { bulkDeleteProductsAction } from "@/app/admin/(panel)/products/actions"
 
 interface Chip {
   id: string
@@ -152,6 +156,37 @@ export function PreordersView({
           text: `${res.count} producto${res.count === 1 ? "" : "s"} ${
             mode === "move" ? "movidos" : "agregados"
           } a "${targetName}".`,
+        })
+        clearSelection()
+        router.refresh()
+      } else {
+        setFeedback({ kind: "err", text: res.error })
+      }
+    })
+  }
+
+  // Soft-delete the current selection. Same action that /admin/products
+  // uses, so the products stay recoverable via the DB but disappear from
+  // every public surface (catalog, sitemap, search) immediately after the
+  // page refresh.
+  function handleBulkDelete() {
+    if (selected.size === 0) return
+    const n = selected.size
+    if (
+      !window.confirm(
+        `¿Eliminar ${n} producto${n === 1 ? "" : "s"}? Dejarán de verse en la tienda. La acción es reversible desde la base de datos.`,
+      )
+    ) {
+      return
+    }
+    setFeedback(null)
+    const ids = Array.from(selected)
+    startBulk(async () => {
+      const res = await bulkDeleteProductsAction(ids)
+      if (res.ok) {
+        setFeedback({
+          kind: "ok",
+          text: `${res.affected} producto${res.affected === 1 ? "" : "s"} eliminado${res.affected === 1 ? "" : "s"}.`,
         })
         clearSelection()
         router.refresh()
@@ -288,6 +323,18 @@ export function PreordersView({
               ) : (
                 "Aplicar"
               )}
+            </Button>
+            {/* Destructive option, deliberately styled to stand apart
+                from the move/apply flow so it's not clicked by accident. */}
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={bulkPending}
+              onClick={handleBulkDelete}
+              className="h-9 gap-1.5 bg-rose-600 text-white hover:bg-rose-700"
+            >
+              <Trash2 className="size-3.5" />
+              Eliminar
             </Button>
             <Button
               size="sm"

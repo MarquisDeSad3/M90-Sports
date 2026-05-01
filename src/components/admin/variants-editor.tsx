@@ -57,6 +57,13 @@ interface VariantsEditorProps {
   onChange: (variants: VariantRow[]) => void
   basePrice: number
   baseSku?: string
+  /**
+   * When true, the empty-state quick-adds offer EU shoe sizes instead of
+   * S/M/L/XL, and "Añadir variante" defaults to EU 40 instead of M.
+   * Driven by `categoryIds.includes("cat_enc_zapatos")` from the product
+   * form so admins of shoes don't have to pick sizes one by one.
+   */
+  isShoe?: boolean
 }
 
 export function VariantsEditor({
@@ -64,6 +71,7 @@ export function VariantsEditor({
   onChange,
   basePrice,
   baseSku = "M90",
+  isShoe = false,
 }: VariantsEditorProps) {
   const totalStock = variants.reduce((s, v) => s + v.stock, 0)
 
@@ -81,14 +89,69 @@ export function VariantsEditor({
     onChange([...variants, ...toAdd])
   }
 
+  // Common shoe range — what we seeded for the encargo zapatos pool, and
+  // what the customer-facing size picker actually shows. EU 36-37 and
+  // 46-47 stay reachable via the per-row dropdown for the rare cases.
+  const addShoeStandard = () => {
+    const sizes: Size[] = [
+      "EU_38",
+      "EU_39",
+      "EU_40",
+      "EU_41",
+      "EU_42",
+      "EU_43",
+      "EU_44",
+      "EU_45",
+    ]
+    const existing = new Set(variants.map((v) => v.size))
+    const toAdd = sizes
+      .filter((s) => !existing.has(s))
+      .map((size) => ({
+        id: `var_${Date.now()}_${size}`,
+        size,
+        stock: 0,
+        sku: `${baseSku}-${size.replace("EU_", "")}`,
+      }))
+    onChange([...variants, ...toAdd])
+  }
+
+  const addShoeFullRange = () => {
+    const sizes: Size[] = [
+      "EU_36",
+      "EU_37",
+      "EU_38",
+      "EU_39",
+      "EU_40",
+      "EU_41",
+      "EU_42",
+      "EU_43",
+      "EU_44",
+      "EU_45",
+      "EU_46",
+      "EU_47",
+    ]
+    const existing = new Set(variants.map((v) => v.size))
+    const toAdd = sizes
+      .filter((s) => !existing.has(s))
+      .map((size) => ({
+        id: `var_${Date.now()}_${size}`,
+        size,
+        stock: 0,
+        sku: `${baseSku}-${size.replace("EU_", "")}`,
+      }))
+    onChange([...variants, ...toAdd])
+  }
+
   const addRow = () => {
+    const defaultSize: Size = isShoe ? "EU_40" : "M"
+    const skuTail = isShoe ? "40" : "M"
     onChange([
       ...variants,
       {
         id: `var_${Date.now()}`,
-        size: "M",
+        size: defaultSize,
         stock: 0,
-        sku: `${baseSku}-M`,
+        sku: `${baseSku}-${skuTail}`,
       },
     ])
   }
@@ -103,22 +166,50 @@ export function VariantsEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Quick action buttons */}
+      {/* Quick action buttons. Shoe-flagged products get EU presets instead
+          of S/M/L/XL because that's what zapatos use everywhere else in
+          the app (variants editor's own dropdown, the storefront size
+          picker, and the size labels in the cart/checkout). */}
       {variants.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Aún no hay variantes. Añade tallas para empezar.
+            {isShoe
+              ? "Aún no hay tallas. Añade los números para empezar y luego pon el stock de cada uno."
+              : "Aún no hay variantes. Añade tallas para empezar."}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={addAdultStandard}
-              className="gap-1.5"
-            >
-              <Plus className="size-3.5" /> S, M, L, XL
-            </Button>
+            {isShoe ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addShoeStandard}
+                  className="gap-1.5"
+                >
+                  <Plus className="size-3.5" /> EU 38–45
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addShoeFullRange}
+                  className="gap-1.5"
+                >
+                  <Plus className="size-3.5" /> EU 36–47
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={addAdultStandard}
+                className="gap-1.5"
+              >
+                <Plus className="size-3.5" /> S, M, L, XL
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"
@@ -126,7 +217,7 @@ export function VariantsEditor({
               onClick={addRow}
               className="gap-1.5"
             >
-              <Plus className="size-3.5" /> Una talla
+              <Plus className="size-3.5" /> {isShoe ? "Una talla" : "Una talla"}
             </Button>
           </div>
         </div>

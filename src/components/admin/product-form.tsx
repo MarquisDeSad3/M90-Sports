@@ -481,6 +481,12 @@ export function ProductForm({
                 onChange={setVariants}
                 basePrice={Number(basePrice) || 0}
                 baseSku="M90"
+                // Shoe products use EU sizing — the encargo-zapatos
+                // category id is the marker (set by the yhc importer
+                // and admin can flip it manually). Passing the flag
+                // here swaps the empty-state quick-adds and the default
+                // for "Añadir variante" to EU sizes.
+                isShoe={categoryIds.includes("cat_enc_zapatos")}
               />
             </CardContent>
           </Card>
