@@ -10,32 +10,38 @@ type Category = {
   photo: string;
 };
 
-// Photos from Unsplash (free for commercial use). Each one matches the
-// category vibe — football kit close-ups, sneaker macros, etc.
+// Photos from Unsplash (free for commercial use). Every URL below was
+// fetched and visually verified — no blind ID picking, otherwise we end
+// up with a "soccer ball on grass" labeled "Selecciones" again.
 //
-// Photo curation note: the previous Selecciones photo was actually a
-// generic sports shot that fit "Otros deportes" better (per Miguel's
-// feedback) so we swap. Selecciones gets a stadium/fans photo that
-// reads as national-team energy. Otros deportes gets the displaced
-// shot (and we keep basketball as the secondary swap target).
+// Curation:
+//   clubes      → Manchester United red kit hanging in a locker, with
+//                 the Adidas + sponsor logos clearly visible. Reads
+//                 "club" without ambiguity.
+//   selecciones → Yellow Colombia national jersey close-up showing the
+//                 federation crest. National-team identity instantly.
+//   retro       → Man wearing a vintage green/white #10 jersey with
+//                 stars — the iconic "10" plus old kit silhouette.
+//   zapatillas  → Soccer cleats macro (kept from prior pass — Miguel
+//                 confirmed this one looks right).
+//   accesorios  → Red supporter scarf with embroidered crest in a
+//                 stadium seat — exactly what Ever sells in this cat.
+//   otros       → NBA jersey rack with Jokic + Tatum kits visible.
+//                 Drops the prior soccer-ball-on-grass shot which
+//                 didn't fit "otros" (it's still soccer).
 const UNSPLASH = {
   clubes:
-    "https://images.unsplash.com/photo-1577471488278-16eec37ffcc2?w=1600&q=80",
-  // Stadium fans with flags — reads "selección nacional" instantly.
+    "https://images.unsplash.com/photo-1772474659559-7d009fef11df?w=1600&q=80",
   selecciones:
-    "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1600&q=80",
+    "https://images.unsplash.com/photo-1763656813028-3eb492fa7bcf?w=1600&q=80",
   retro:
-    "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=1600&q=80",
-  // Soccer cleats macro — switched from the generic running sneaker
-  // because the catalog's "Zapatillas" is mostly fútbol boots.
+    "https://images.unsplash.com/photo-1759308553457-6f7f0850d9cd?w=1600&q=80",
   zapatillas:
     "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=1600&q=80",
   accesorios:
-    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1600&q=80",
-  // The old Selecciones photo (1602773692589-bd06d1d96cb1) lives here
-  // now — Miguel said it fits Otros deportes better.
+    "https://images.unsplash.com/photo-1775725181784-da61e5517b31?w=1600&q=80",
   otros:
-    "https://images.unsplash.com/photo-1602773692589-bd06d1d96cb1?w=1600&q=80",
+    "https://images.unsplash.com/photo-1773355579207-4bc7a0915e74?w=1600&q=80",
 };
 
 const CATEGORIES: Category[] = [
