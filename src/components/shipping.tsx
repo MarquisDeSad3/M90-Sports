@@ -4,13 +4,34 @@ import { motion } from "framer-motion";
 import { MapPin, ShieldCheck, Clock, Banknote } from "lucide-react";
 import { asset } from "@/lib/utils";
 import type { PublicShippingZone } from "@/lib/queries/public-shipping";
+import {
+  CashIcon,
+  PayPalIcon,
+  ZelleIcon,
+} from "@/components/payment-icons";
 
+// Pago: solo los 3 canales que Ever opera. Transfermóvil quedó fuera
+// porque la base de clientes objetivo es la diáspora (familia en US/EU
+// pagando para entrega en Cuba), donde Zelle y PayPal son los rieles
+// reales. Efectivo cubre la entrega en mano cuando el destinatario
+// recibe en La Habana.
 const PAYMENTS = [
-  { name: "Transfermóvil", icon: "TM" },
-  { name: "Zelle", icon: "Z" },
-  { name: "PayPal", icon: "PP" },
-  { name: "Efectivo", icon: "$" },
-];
+  {
+    name: "Zelle",
+    Icon: ZelleIcon,
+    note: "Diáspora, instantáneo",
+  },
+  {
+    name: "PayPal",
+    Icon: PayPalIcon,
+    note: "Internacional",
+  },
+  {
+    name: "Efectivo",
+    Icon: CashIcon,
+    note: "A la entrega",
+  },
+] as const;
 
 interface ShippingProps {
   zones: PublicShippingZone[];
@@ -35,8 +56,10 @@ export function Shipping({ zones }: ShippingProps) {
               <br />a punta<span className="text-[color:var(--color-red)]">.</span>
             </h2>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-[color:var(--color-navy)]/70">
-              Mensajería propia en La Habana. Para el resto de provincias
-              usamos operadores con seguimiento real. Sin promesas vacías.
+              Llegamos a las 16 provincias. Mensajería con seguimiento
+              real — la tarifa y el tiempo te los confirmamos por
+              WhatsApp antes de que pagues nada. Cobertura más rápida
+              en occidente y centro.
             </p>
 
             {zones.length === 0 ? (
@@ -135,16 +158,23 @@ export function Shipping({ zones }: ShippingProps) {
                 Paga por el canal que te venga mejor.
               </p>
               <div className="mt-5 grid grid-cols-3 gap-3">
-                {PAYMENTS.map((p) => (
+                {PAYMENTS.map(({ name, Icon, note }) => (
                   <div
-                    key={p.name}
-                    className="group flex aspect-square flex-col items-center justify-center rounded-xl border border-[color:var(--color-navy)]/10 bg-white p-3 text-center transition-colors hover:border-[color:var(--color-red)]/50"
+                    key={name}
+                    className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-[color:var(--color-navy)]/10 bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[color:var(--color-red)]/40 hover:shadow-md"
                   >
-                    <div className="grid h-10 w-10 place-items-center rounded-full bg-[color:var(--color-navy)] font-display text-lg italic text-[color:var(--color-cream)]">
-                      {p.icon}
+                    {/* Brand SVG — sized so it reads at-a-glance even
+                        on mobile, but doesn't dominate the card. */}
+                    <div className="grid h-12 w-12 place-items-center">
+                      <Icon className="h-full w-full" />
                     </div>
-                    <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--color-navy)]">
-                      {p.name}
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-[12px] font-semibold tracking-tight text-[color:var(--color-navy)]">
+                        {name}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider text-[color:var(--color-navy)]/50">
+                        {note}
+                      </div>
                     </div>
                   </div>
                 ))}
