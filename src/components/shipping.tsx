@@ -10,27 +10,14 @@ import {
   ZelleIcon,
 } from "@/components/payment-icons";
 
-// Pago: solo los 3 canales que Ever opera. Transfermóvil quedó fuera
-// porque la base de clientes objetivo es la diáspora (familia en US/EU
-// pagando para entrega en Cuba), donde Zelle y PayPal son los rieles
-// reales. Efectivo cubre la entrega en mano cuando el destinatario
-// recibe en La Habana.
+// Pago: tres canales — Zelle, PayPal, efectivo a la entrega. Sin
+// captions sub-line: Ever pidió expresamente que no apareciera
+// "diáspora" en la UI, y dejar solo los logos + nombre se ve más
+// limpio que captions arbitrarios.
 const PAYMENTS = [
-  {
-    name: "Zelle",
-    Icon: ZelleIcon,
-    note: "Diáspora, instantáneo",
-  },
-  {
-    name: "PayPal",
-    Icon: PayPalIcon,
-    note: "Internacional",
-  },
-  {
-    name: "Efectivo",
-    Icon: CashIcon,
-    note: "A la entrega",
-  },
+  { name: "Zelle", Icon: ZelleIcon },
+  { name: "PayPal", Icon: PayPalIcon },
+  { name: "Efectivo", Icon: CashIcon },
 ] as const;
 
 interface ShippingProps {
@@ -158,23 +145,18 @@ export function Shipping({ zones }: ShippingProps) {
                 Paga por el canal que te venga mejor.
               </p>
               <div className="mt-5 grid grid-cols-3 gap-3">
-                {PAYMENTS.map(({ name, Icon, note }) => (
+                {PAYMENTS.map(({ name, Icon }) => (
                   <div
                     key={name}
-                    className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-[color:var(--color-navy)]/10 bg-white p-4 text-center transition-all hover:-translate-y-0.5 hover:border-[color:var(--color-red)]/40 hover:shadow-md"
+                    className="group flex flex-col items-center justify-center gap-3 rounded-xl border border-[color:var(--color-navy)]/10 bg-white p-5 text-center transition-all hover:-translate-y-0.5 hover:border-[color:var(--color-red)]/40 hover:shadow-md"
                   >
                     {/* Brand SVG — sized so it reads at-a-glance even
                         on mobile, but doesn't dominate the card. */}
                     <div className="grid h-12 w-12 place-items-center">
                       <Icon className="h-full w-full" />
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="text-[12px] font-semibold tracking-tight text-[color:var(--color-navy)]">
-                        {name}
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wider text-[color:var(--color-navy)]/50">
-                        {note}
-                      </div>
+                    <div className="text-[12px] font-semibold tracking-tight text-[color:var(--color-navy)]">
+                      {name}
                     </div>
                   </div>
                 ))}

@@ -42,7 +42,14 @@ export function PayPalIcon({ className }: IconProps) {
   )
 }
 
-/** Zelle — stylized "Z" inside their signature lavender circle. */
+/**
+ * Zelle — stylized "Z" inside their signature lavender circle.
+ *
+ * Built from primitives (rect + line) instead of a hand-traced path
+ * because the path version aliased badly at the 12-14px size the home
+ * tile renders at. Three white shapes — top bar, diagonal stroke,
+ * bottom bar — center cleanly on a 64-unit grid.
+ */
 export function ZelleIcon({ className }: IconProps) {
   return (
     <svg
@@ -52,10 +59,23 @@ export function ZelleIcon({ className }: IconProps) {
       aria-hidden
     >
       <circle cx="32" cy="32" r="32" fill="#6D1ED4" />
-      <path
-        d="M28.5 16h7v3.5h-2.6v3.7h7.7v4.6L24.6 41h11v3.7h-7v3.7h-7v-3.7h2.7v-3.7H17V36l16-12.8H21V18.6h7.5z"
-        fill="#fff"
+      {/* Vertical "I" through the Z — Zelle's signature two-tick mark
+          that distinguishes it from a generic letterform. */}
+      <rect x="30" y="12" width="4" height="40" rx="0.5" fill="#fff" />
+      {/* Top horizontal bar */}
+      <rect x="19" y="20" width="26" height="5" rx="0.5" fill="#fff" />
+      {/* Diagonal stroke */}
+      <line
+        x1="43"
+        y1="25"
+        x2="21"
+        y2="40"
+        stroke="#fff"
+        strokeWidth="5"
+        strokeLinecap="square"
       />
+      {/* Bottom horizontal bar */}
+      <rect x="19" y="40" width="26" height="5" rx="0.5" fill="#fff" />
     </svg>
   )
 }
