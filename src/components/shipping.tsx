@@ -1,9 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MapPin, ShieldCheck, Clock, Banknote } from "lucide-react";
+import { ArrowRight, Plane, ShieldCheck, Clock, Banknote, Truck } from "lucide-react";
 import { asset } from "@/lib/utils";
-import type { PublicShippingZone } from "@/lib/queries/public-shipping";
 import {
   CashIcon,
   PayPalIcon,
@@ -20,11 +19,7 @@ const PAYMENTS = [
   { name: "Efectivo", Icon: CashIcon },
 ] as const;
 
-interface ShippingProps {
-  zones: PublicShippingZone[];
-}
-
-export function Shipping({ zones }: ShippingProps) {
+export function Shipping() {
   return (
     <section
       id="envios"
@@ -43,49 +38,91 @@ export function Shipping({ zones }: ShippingProps) {
               <br />a punta<span className="text-[color:var(--color-red)]">.</span>
             </h2>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-[color:var(--color-navy)]/70">
-              Llegamos a las 16 provincias. Mensajería con seguimiento
-              real — la tarifa y el tiempo te los confirmamos por
-              WhatsApp antes de que pagues nada. Cobertura más rápida
-              en occidente y centro.
+              Llegamos a las 16 provincias. La mayoría de los pedidos
+              vienen del exterior — abajo te explicamos los tiempos
+              reales para que no tengas sorpresas. Tarifa exacta de
+              envío te la confirmamos por WhatsApp antes de pagar.
             </p>
 
-            {zones.length === 0 ? (
-              <p className="mt-10 rounded-xl border border-dashed border-[color:var(--color-navy)]/20 bg-white/40 p-6 text-sm text-[color:var(--color-navy)]/65">
-                Todavía no configuramos las zonas de envío. Escríbenos por
-                WhatsApp y te confirmamos la entrega para tu provincia.
-              </p>
-            ) : (
-              <div className="mt-10 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {zones.map((p, i) => (
-                  <motion.div
-                    key={p.id}
-                    initial={{ opacity: 0, y: 14 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.02, duration: 0.4 }}
-                    className={`group flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-colors ${
-                      p.highlight
-                        ? "border-[color:var(--color-red)] bg-[color:var(--color-red)] text-white"
-                        : "border-[color:var(--color-navy)]/10 bg-white/60 text-[color:var(--color-navy)] hover:border-[color:var(--color-navy)]/40"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 font-semibold">
-                      <MapPin size={12} />
-                      {p.name}
-                    </span>
-                    <span
-                      className={`font-display text-lg italic ${
-                        p.highlight
-                          ? "text-[color:var(--color-cream)]"
-                          : "text-[color:var(--color-red)]"
-                      }`}
-                    >
-                      {p.daysLabel}
-                    </span>
-                  </motion.div>
-                ))}
+            {/* Timeline en dos fases — sustituye el viejo grid de
+                provincias. La realidad operativa de M90 es que los
+                productos llegan a Cuba primero (25-30 días) y de ahí
+                a la provincia (1-2 semanas), no que cada provincia
+                tenga un tiempo único. Estos son los números que el
+                cliente necesita ANTES de comprar. */}
+            <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_1fr]">
+              {/* Fase 1 */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="rounded-2xl border border-[color:var(--color-navy)]/10 bg-white/70 p-6"
+              >
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-red)]">
+                  <Plane size={14} />
+                  Fase 1
+                </div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="font-display text-5xl italic leading-none text-[color:var(--color-red)]">
+                    25–30
+                  </span>
+                  <span className="text-sm font-semibold text-[color:var(--color-navy)]/70">
+                    días
+                  </span>
+                </div>
+                <p className="mt-3 text-sm font-semibold text-[color:var(--color-navy)]">
+                  Llegada del pedido a Cuba
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[color:var(--color-navy)]/60">
+                  Después de cerrar la ronda de pedidos del exterior.
+                </p>
+              </motion.div>
+
+              {/* Connector arrow — sólo visible en desktop */}
+              <div className="hidden items-center justify-center sm:flex">
+                <ArrowRight
+                  size={28}
+                  className="text-[color:var(--color-navy)]/30"
+                />
               </div>
-            )}
+
+              {/* Fase 2 */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="rounded-2xl border border-[color:var(--color-red)]/30 bg-[color:var(--color-red)]/[0.04] p-6"
+              >
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--color-red)]">
+                  <Truck size={14} />
+                  Fase 2
+                </div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="font-display text-5xl italic leading-none text-[color:var(--color-red)]">
+                    1–2
+                  </span>
+                  <span className="text-sm font-semibold text-[color:var(--color-navy)]/70">
+                    semanas
+                  </span>
+                </div>
+                <p className="mt-3 text-sm font-semibold text-[color:var(--color-navy)]">
+                  Entrega en tu provincia
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[color:var(--color-navy)]/60">
+                  Mensajería con seguimiento. Más rápido en occidente
+                  y centro.
+                </p>
+              </motion.div>
+            </div>
+
+            {/* Total combinado, en una sola línea — ayuda al lector
+                a hacer la suma rápida sin tener que entrecerrar los
+                ojos. */}
+            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--color-navy)]/50">
+              Total estimado · 4 a 8 semanas desde el cierre
+            </p>
           </div>
 
           {/* Right: trust + payments */}
