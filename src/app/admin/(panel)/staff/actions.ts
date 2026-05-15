@@ -56,14 +56,31 @@ const passwordResetSchema = z
   })
   .strict()
 
-/** Read FormData into the shape Zod expects, with cheap normalization. */
-function readForm(formData: FormData) {
+// Each action reads only the fields its schema declares. A single
+// readForm() that returned every key broke .strict() validation —
+// e.g. createSchema rejected the always-present id="" with
+// "Unrecognized key 'id'".
+function readCreate(formData: FormData) {
   return {
     email: String(formData.get("email") ?? ""),
     name: String(formData.get("name") ?? ""),
     role: String(formData.get("role") ?? ""),
     password: String(formData.get("password") ?? ""),
+  }
+}
+
+function readUpdate(formData: FormData) {
+  return {
     id: String(formData.get("id") ?? ""),
+    name: String(formData.get("name") ?? ""),
+    role: String(formData.get("role") ?? ""),
+  }
+}
+
+function readPasswordReset(formData: FormData) {
+  return {
+    id: String(formData.get("id") ?? ""),
+    password: String(formData.get("password") ?? ""),
   }
 }
 
@@ -104,7 +121,7 @@ export async function createStaffAction(
     }
   }
 
-  const parsed = createSchema.safeParse(readForm(formData))
+  const parsed = createSchema.safeParse(readCreate(formData))
   if (!parsed.success) {
     const first = parsed.error.issues[0]
     return { ok: false, error: first?.message ?? "Datos inválidos." }
@@ -167,7 +184,7 @@ export async function updateStaffAction(
     }
   }
 
-  const parsed = updateSchema.safeParse(readForm(formData))
+  const parsed = updateSchema.safeParse(readUpdate(formData))
   if (!parsed.success) {
     const first = parsed.error.issues[0]
     return { ok: false, error: first?.message ?? "Datos inválidos." }
@@ -250,7 +267,7 @@ export async function resetPasswordAction(
     }
   }
 
-  const parsed = passwordResetSchema.safeParse(readForm(formData))
+  const parsed = passwordResetSchema.safeParse(readPasswordReset(formData))
   if (!parsed.success) {
     const first = parsed.error.issues[0]
     return { ok: false, error: first?.message ?? "Datos inválidos." }
