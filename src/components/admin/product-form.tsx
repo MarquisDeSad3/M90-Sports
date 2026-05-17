@@ -480,7 +480,16 @@ export function ProductForm({
                 variants={variants}
                 onChange={setVariants}
                 basePrice={Number(basePrice) || 0}
-                baseSku="M90"
+                // SKU prefix derived from the product slug (which is
+                // UNIQUE in DB). Hardcoding "M90" here meant every
+                // product generated M90-S / M90-M / M90-L / M90-XL,
+                // colliding with the UNIQUE index on variants.sku the
+                // moment a second product reused the same talles.
+                baseSku={
+                  slug
+                    ? slug.toUpperCase()
+                    : `M90-${Date.now().toString(36).slice(-4).toUpperCase()}`
+                }
                 // Shoe products use EU sizing — the encargo-zapatos
                 // category id is the marker (set by the yhc importer
                 // and admin can flip it manually). Passing the flag
