@@ -54,8 +54,12 @@ function logSecurityEvent(event: {
 // if no zone matches.
 
 async function nextOrderNumber(): Promise<string> {
+  // The `$` anchors the match to the trailing digits. Order numbers look
+  // like "M90-000091"; an un-anchored [0-9]+ matches the "90" in the
+  // "M90" prefix instead, so MAX()+1 returns the same value forever and
+  // every INSERT after the first collides on the order_number unique key.
   const result = await db.execute(
-    sql`SELECT COALESCE(MAX(CAST(SUBSTRING(order_number FROM '[0-9]+') AS INTEGER)), 0) + 1 AS next FROM orders`,
+    sql`SELECT COALESCE(MAX(CAST(SUBSTRING(order_number FROM '[0-9]+$') AS INTEGER)), 0) + 1 AS next FROM orders`,
   )
   const row = result[0] as { next?: number } | undefined
   const n = row?.next ?? 1
@@ -561,11 +565,31 @@ export async function POST(request: Request) {
       whatsappUrl,
     })
   } catch (err) {
-    // Only log the message, never the full error object — Postgres
-    // exceptions sometimes carry the failed row, which would leak PII
-    // (phone, name, address) into the container's stdout.
-    const msg = err instanceof Error ? err.message : "unknown"
-    console.error("[orders] failed to create order:", msg)
+    // Drizzle wraps the driver error, so the real Postgres failure lives
+    // in `err.cause`. Log only schema-level fields (sqlstate, constraint,
+    // table, the driver message) — never `detail` or the full error
+    // object, which can carry the failed row (phone, name, address)
+    // into the container's stdout.
+    const cause = err instanceof Error ? err.cause : undefined
+    const pg =
+      cause && typeof cause === "object"
+        ? (cause as {
+            code?: unknown
+            constraint_name?: unknown
+            table_name?: unknown
+            message?: unknown
+          })
+        : undefined
+    console.error(
+      "[orders] failed to create order:",
+      JSON.stringify({
+        message: err instanceof Error ? err.message : "unknown",
+        dbCode: pg?.code,
+        dbConstraint: pg?.constraint_name,
+        dbTable: pg?.table_name,
+        dbMessage: pg?.message,
+      }),
+    )
     return fail(500, "No pudimos crear el pedido. Intenta de nuevo.")
   }
 }
